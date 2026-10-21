@@ -1,37 +1,37 @@
 const upcomingEvents = [
   {
-    date: "18",
-    month: "OCT",
-    title: "小羽｜日系泳裝棚拍",
+    date: "15",
+    month: "NOV",
+    title: "小羽｜日系時尚影樓拍攝",
     time: "14:00 - 17:00",
-    location: "台北市・中山區攝影棚",
-    price: "NT$2,500",
+    location: "葵興影樓",
+    price: "HK$680",
     model: "小羽",
-    theme: "日系・泳裝・棚拍",
+    theme: "日系・時尚・影樓",
     image:
       "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=85",
   },
   {
-    date: "25",
-    month: "OCT",
-    title: "Mina｜復古旗袍夜拍",
+    date: "22",
+    month: "NOV",
+    title: "Mina｜復古霓虹人像影樓",
     time: "18:30 - 21:30",
-    location: "台北市・大稻埕",
-    price: "NT$2,800",
+    location: "葵興影樓",
+    price: "HK$780",
     model: "Mina",
-    theme: "旗袍・復古・夜拍",
+    theme: "復古・霓虹・時尚人像",
     image:
       "https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1200&q=85",
   },
   {
-    date: "02",
-    month: "NOV",
-    title: "Yuki｜秋日制服外拍",
+    date: "06",
+    month: "DEC",
+    title: "Yuki｜秋日制服棚拍",
     time: "13:30 - 16:30",
-    location: "新北市・淡水老街",
-    price: "NT$2,200",
+    location: "葵興影樓",
+    price: "HK$620",
     model: "Yuki",
-    theme: "制服・秋日・外拍",
+    theme: "制服・清新・棚拍",
     image:
       "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=85",
   },
@@ -41,40 +41,40 @@ const models = [
   {
     name: "小羽",
     englishName: "YU",
-    style: "日系・泳裝・清新寫真",
+    style: "日系・時尚・清新人像",
     image:
       "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=85",
   },
   {
     name: "Mina",
     englishName: "MINA",
-    style: "旗袍・復古・都會夜景",
+    style: "復古・霓虹・影樓人像",
     image:
       "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85",
   },
   {
     name: "Yuki",
     englishName: "YUKI",
-    style: "制服・甜美・自然外拍",
+    style: "制服・甜美・自然棚拍",
     image:
       "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=85",
   },
   {
     name: "Nana",
     englishName: "NANA",
-    style: "時尚・人體藝術・棚拍",
+    style: "時尚・情緒・創意人像",
     image:
       "https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&w=900&q=85",
   },
 ];
 
 const categories = [
-  { icon: "◐", name: "日系寫真", count: "12 場活動" },
-  { icon: "✦", name: "旗袍古風", count: "8 場活動" },
-  { icon: "◒", name: "泳裝人體藝術", count: "15 場活動" },
-  { icon: "◈", name: "制服主題", count: "10 場活動" },
-  { icon: "◑", name: "戶外街拍", count: "9 場活動" },
-  { icon: "☾", name: "夜景棚拍", count: "6 場活動" },
+  { icon: "◐", name: "日系寫真", count: "人氣影樓主題" },
+  { icon: "✦", name: "復古霓虹", count: "城市感人像風格" },
+  { icon: "◒", name: "時尚棚拍", count: "專業燈光拍攝" },
+  { icon: "◈", name: "制服主題", count: "清新校園風格" },
+  { icon: "◑", name: "創意造型", count: "個人風格企劃" },
+  { icon: "☾", name: "夜景氛圍", count: "暗調燈光人像" },
 ];
 
 export default function Home() {
@@ -106,23 +106,27 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-overlay" />
+
         <div className="hero-content">
           <p className="eyebrow">CAPTURE THE MOMENT</p>
+
           <h1>
             每一次快門，
             <br />
             都值得被記錄。
           </h1>
+
           <p className="hero-description">
-            探索最新攝影活動、找到喜歡的 Model 與拍攝主題。
+            探索香港攝影活動，找到你喜歡的 Model、拍攝主題與影樓企劃。
             <br />
-            所有活動資訊，一個地方完整掌握。
+            活動時間、地點與報名資訊，一個地方完整掌握。
           </p>
 
           <div className="hero-actions">
             <a className="primary-button" href="#events">
               查看近期活動 <span>↓</span>
             </a>
+
             <a className="text-button" href="#calendar">
               查看活動日曆 <span>→</span>
             </a>
@@ -132,8 +136,12 @@ export default function Home() {
         <div className="hero-scroll">SCROLL TO EXPLORE</div>
 
         <div className="hero-stat">
-          <strong>26</strong>
-          <span>即將舉辦<br />攝影活動</span>
+          <strong>3</strong>
+          <span>
+            即將舉辦
+            <br />
+            攝影活動
+          </span>
         </div>
       </section>
 
@@ -142,8 +150,11 @@ export default function Home() {
           <div>
             <p className="eyebrow dark">UPCOMING EVENTS</p>
             <h2>近期活動</h2>
-            <p>選擇一場喜歡的拍攝，讓靈感不只存在於群組訊息裡。</p>
+            <p>
+              所有活動預設於葵興影樓舉行，讓你更輕鬆安排下一次人像創作。
+            </p>
           </div>
+
           <a className="view-all" href="#calendar">
             查看全部活動 <span>→</span>
           </a>
@@ -160,21 +171,26 @@ export default function Home() {
                   <strong>{event.date}</strong>
                   <span>{event.month}</span>
                 </div>
+
                 <span className="event-status">即將舉行</span>
               </div>
 
               <div className="event-body">
                 <p className="event-theme">{event.theme}</p>
+
                 <h3>{event.title}</h3>
+
                 <ul className="event-info">
                   <li>◷ {event.time}</li>
                   <li>⌖ {event.location}</li>
                 </ul>
+
                 <div className="event-footer">
                   <span>
                     <small>活動費用</small>
                     <strong>{event.price}</strong>
                   </span>
+
                   <a href="#calendar" aria-label={`查看 ${event.title} 詳情`}>
                     查看詳情 <span>→</span>
                   </a>
@@ -190,27 +206,68 @@ export default function Home() {
           <p className="eyebrow">EVENT CALENDAR</p>
           <h2>用日曆，安排下一次創作。</h2>
           <p>
-            未來這裡會顯示月曆、週曆與活動列表，
-            讓你直接依日期找到想參加的攝影活動。
+            依日期查看即將舉行的影樓活動，預留檔期、準備器材，
+            然後安心地把靈感變成照片。
           </p>
         </div>
 
         <div className="mini-calendar" aria-label="活動日曆預覽">
           <div className="calendar-top">
             <span>‹</span>
-            <strong>2026 年 10 月</strong>
+            <strong>2026 年 11 月</strong>
             <span>›</span>
           </div>
+
           <div className="calendar-week">
-            <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+            <span>日</span>
+            <span>一</span>
+            <span>二</span>
+            <span>三</span>
+            <span>四</span>
+            <span>五</span>
+            <span>六</span>
           </div>
+
           <div className="calendar-days">
-            <span className="muted">27</span><span className="muted">28</span><span className="muted">29</span><span className="muted">30</span>
-            <span>1</span><span>2</span><span>3</span>
-            <span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
-            <span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span>
-            <span className="has-event">18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span><span>24</span>
-            <span className="has-event">25</span><span>26</span><span>27</span><span>28</span><span>29</span><span>30</span><span>31</span>
+            <span>1</span>
+            <span>2</span>
+            <span>3</span>
+            <span>4</span>
+            <span>5</span>
+            <span>6</span>
+            <span>7</span>
+
+            <span>8</span>
+            <span>9</span>
+            <span>10</span>
+            <span>11</span>
+            <span>12</span>
+            <span>13</span>
+            <span>14</span>
+
+            <span className="has-event">15</span>
+            <span>16</span>
+            <span>17</span>
+            <span>18</span>
+            <span>19</span>
+            <span>20</span>
+            <span>21</span>
+
+            <span className="has-event">22</span>
+            <span>23</span>
+            <span>24</span>
+            <span>25</span>
+            <span>26</span>
+            <span>27</span>
+            <span>28</span>
+
+            <span>29</span>
+            <span>30</span>
+            <span className="muted">1</span>
+            <span className="muted">2</span>
+            <span className="muted">3</span>
+            <span className="muted">4</span>
+            <span className="muted">5</span>
           </div>
         </div>
       </section>
@@ -220,8 +277,11 @@ export default function Home() {
           <div>
             <p className="eyebrow dark">FEATURED MODELS</p>
             <h2>認識本月 Model</h2>
-            <p>依 Model 尋找活動，快速掌握她們接下來的拍攝安排。</p>
+            <p>
+              依 Model 尋找活動，快速掌握她們於葵興影樓的下一次拍攝安排。
+            </p>
           </div>
+
           <a className="view-all" href="#models">
             查看所有 Models <span>→</span>
           </a>
@@ -234,6 +294,7 @@ export default function Home() {
                 className="model-image"
                 style={{ backgroundImage: `url(${model.image})` }}
               />
+
               <div className="model-overlay">
                 <p>{model.englishName}</p>
                 <h3>{model.name}</h3>
@@ -249,7 +310,9 @@ export default function Home() {
           <div>
             <p className="eyebrow dark">EXPLORE BY STYLE</p>
             <h2>依主題探索</h2>
-            <p>從服裝、風格到拍攝場景，找到你最想按下快門的那一場。</p>
+            <p>
+              從服裝、燈光、風格到拍攝情緒，找到你下一場最想按下快門的創作。
+            </p>
           </div>
         </div>
 
@@ -266,12 +329,16 @@ export default function Home() {
       </section>
 
       <section className="cta-section">
-        <p className="eyebrow">PHOTOEVENT COMMUNITY</p>
+        <p className="eyebrow">PHOTOEVENT HONG KONG</p>
+
         <h2>下一次靈感，不必等群組訊息浮出水面。</h2>
+
         <p>
-          PhotoEvent 將所有活動集中整理，讓你依日期、Model、主題與服裝，
-          輕鬆找到適合自己的攝影計畫。
+          PhotoEvent 集中整理香港攝影活動，
+          讓你按日期、Model、主題與拍攝風格，
+          輕鬆找到適合自己的影樓創作計劃。
         </p>
+
         <a className="primary-button light-button" href="#events">
           開始探索活動 <span>→</span>
         </a>
@@ -285,7 +352,9 @@ export default function Home() {
             <em>EVENT</em>
           </span>
         </a>
-        <p>© 2026 PhotoEvent. 攝影活動資訊平台。</p>
+
+        <p>© 2026 PhotoEvent Hong Kong. 攝影活動資訊平台。</p>
+
         <a href="#top">回到頂端 ↑</a>
       </footer>
     </main>
