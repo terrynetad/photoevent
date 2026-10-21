@@ -455,12 +455,44 @@ a {
 }
 
 .mini-calendar {
-  max-width: 470px;
+  width: 23rem !important;
   justify-self: end;
   padding: 23px;
   background: #f8f6f0;
   color: var(--black);
   box-shadow: 16px 16px 0 rgba(196, 154, 88, 0.2);
+}
+/* 月曆放大後，同步增加日期區的可讀性與點擊範圍 */
+.calendar-top {
+  padding-bottom: 15px;
+  margin-bottom: 15px;
+}
+
+.calendar-top strong {
+  font-size: 1rem;
+}
+
+.calendar-top button {
+  font-size: 1.45rem !important;
+  padding: 4px 9px !important;
+}
+
+.calendar-week {
+  margin-bottom: 10px;
+  font-size: 0.8rem;
+}
+
+.calendar-days {
+  row-gap: 7px;
+  column-gap: 3px;
+}
+
+.calendar-days button {
+  width: 2.15rem !important;
+  height: 2.15rem !important;
+  min-width: 2.15rem !important;
+  min-height: 2.15rem !important;
+  font-size: 0.96rem;
 }
 
 .calendar-top {
@@ -800,9 +832,138 @@ footer > a:last-child {
     padding: 80px 23px;
   }
 
+  .calendar-days button:not(:disabled):hover {
+  background: #f5e8cc !important;
+  color: #5c3517 !important;
+  border-color: #d8ab59 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(140, 97, 35, 0.18) !important;
+  }
+
+  .calendar-days button[aria-pressed="true"]:hover {
+    background: #9f4b2d !important;
+    color: #ffffff !important;
+    border-color: #7d351d !important;
+  }
+
+  .calendar-days button:focus-visible {
+    outline: 2px solid #7d351d;
+    outline-offset: 2px;
+  }
+
   footer {
     align-items: flex-start;
     flex-direction: column;
     gap: 13px;
+  }
+
+  /* =========================================
+   首頁 Hero 月曆放大版
+   保留既有金色／焦糖色與互動邏輯
+   ========================================= */
+
+  .mini-calendar {
+    width: 20.5rem;
+    min-width: 20.5rem;
+    padding: 1.45rem 1.5rem 1.35rem;
+  }
+
+  .calendar-top {
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .calendar-top strong {
+    font-size: 1rem;
+  }
+
+  .calendar-top button {
+    font-size: 1.55rem !important;
+    padding: 0.25rem 0.55rem !important;
+  }
+
+  .calendar-week {
+    margin-bottom: 0.7rem;
+    font-size: 0.8rem;
+  }
+
+  .calendar-days {
+    row-gap: 0.45rem;
+    column-gap: 0.2rem;
+  }
+
+  .calendar-days button {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    min-width: 2.25rem !important;
+    min-height: 2.25rem !important;
+    font-size: 0.98rem;
+  }
+
+  /* 手機或窄螢幕時，不讓放大月曆超出畫面 */
+  @media (max-width: 768px) {
+    .mini-calendar {
+      width: min(20.5rem, calc(100vw - 2.5rem));
+      min-width: 0;
+    }
+  }
+
+  /* =========================================
+   月曆下方活動摘要按鈕
+   點擊後才捲動到對應活動卡
+   ========================================= */
+
+  .calendar-event-summary {
+    display: block;
+    width: 100%;
+    border: 0 !important;
+    outline: 0;
+    margin: 0;
+    padding: 0;
+    background: transparent !important;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+    line-height: 1.45;
+  }
+
+  .calendar-event-summary + .calendar-event-summary {
+    margin-top: 0.7rem;
+  }
+
+  .calendar-event-summary strong {
+    display: block;
+    color: var(--black);
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.45;
+    transition: color 0.18s ease;
+  }
+
+  .calendar-event-summary span {
+    display: block;
+    margin-top: 0.16rem;
+    color: #5c3517;
+    font-size: 0.76rem;
+    line-height: 1.5;
+  }
+
+  .calendar-event-summary:hover strong,
+  .calendar-event-summary:focus-visible strong {
+    color: #b85c38;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+
+  .calendar-event-summary:hover span {
+    color: #8e3f23;
+  }
+
+  .calendar-event-summary:focus-visible {
+    outline: 2px solid #b85c38;
+    outline-offset: 4px;
+    border-radius: 3px;
   }
 }

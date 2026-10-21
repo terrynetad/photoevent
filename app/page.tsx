@@ -247,6 +247,15 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
+  // 月曆目前顯示的年月，例如 { year: 2026, month: 11 }
+  const [calendarMonth, setCalendarMonth] = useState<{
+    year: number;
+    month: number;
+  } | null>(null);
+
+  // 使用者目前點選的日期，格式：2026-11-15
+  const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -460,6 +469,18 @@ export default function Home() {
           setEvents(displayEvents);
           setModels(mappedModels);
           setCategories(mappedCategories);
+
+          // 第一次載入時，月曆定位到第一個活動月份，
+          // 並預設選取第一場活動日期。
+          if (displayEvents.length > 0) {
+            const firstEventDate = getHongKongYearMonth(
+              displayEvents[0].startAt
+            );
+
+            setCalendarMonth(firstEventDate);
+            setSelectedDateKey(toHongKongDateKey(displayEvents[0].startAt));
+          }
+
           setIsLoading(false);
         }
       } catch (error) {
@@ -482,65 +503,128 @@ export default function Home() {
   }, []);
 
   const calendarData = useMemo(() => {
-    const referenceDate =
-      events[0]?.startAt || "2026-01-01T00:00:00.000Z";
+      const fallbackDate = events[0]?.startAt || "2026-01-01T00:00:00.000Z";
 
-    const { year, month } = getHongKongYearMonth(referenceDate);
+      const activeMonth =
+        calendarMonth || getHongKongYearMonth(fallbackDate);
 
-    const firstDayWeekday = new Date(
-      Date.UTC(year, month - 1, 1)
-    ).getUTCDay();
+      const { year, month } = activeMonth;
 
-    const daysInCurrentMonth = new Date(
-      Date.UTC(year, month, 0)
-    ).getUTCDate();
+      const firstDayWeekday = new Date(
+        Date.UTC(year, month - 1, 1)
+      ).getUTCDay();
 
-    const daysInPreviousMonth = new Date(
-      Date.UTC(year, month - 1, 0)
-    ).getUTCDate();
+      const daysInCurrentMonth = new Date(
+        Date.UTC(year, month, 0)
+      ).getUTCDate();
 
-    const eventDateKeys = new Set(
-      events.map((event) => toHongKongDateKey(event.startAt))
-    );
+      const daysInPreviousMonth = new Date(
+        Date.UTC(year, month - 1, 0)
+      ).getUTCDate();
 
-    const calendarCells = Array.from({ length: 42 }, (_, index) => {
-      const dayNumber = index - firstDayWeekday + 1;
+      const eventsByDate = new Map<string, EventView[]>();
 
-      if (dayNumber <= 0) {
+      events.forEach((event) => {
+        const dateKey = toHongKongDateKey(event.startAt);
+        const existingEvents = eventsByDate.get(dateKey) ?? [];
+
+        eventsByDate.set(dateKey, [...existingEvents, event]);
+      });
+
+      const calendarCells = Array.from({ length: 42 }, (_, index) => {
+        const dayNumber = index - firstDayWeekday + 1;
+
+        if (dayNumber <= 0) {
+          return {
+            day: daysInPreviousMonth + dayNumber,
+            dateKey: "",
+            muted: true,
+            hasEvent: false,
+            events: [] as EventView[],
+            key: `previous-${year}-${month}-${daysInPreviousMonth + dayNumber}`,
+          };
+        }
+
+        if (dayNumber > daysInCurrentMonth) {
+          return {
+            day: dayNumber - daysInCurrentMonth,
+            dateKey: "",
+            muted: true,
+            hasEvent: false,
+            events: [] as EventView[],
+            key: `next-${year}-${month}-${dayNumber - daysInCurrentMonth}`,
+          };
+        }
+
+        const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(
+          dayNumber
+        ).padStart(2, "0")}`;
+
+        const dateEvents = eventsByDate.get(dateKey) ?? [];
+
         return {
-          day: daysInPreviousMonth + dayNumber,
-          muted: true,
-          hasEvent: false,
-          key: `previous-${daysInPreviousMonth + dayNumber}`,
+          day: dayNumber,
+          dateKey,
+          muted: false,
+          hasEvent: dateEvents.length > 0,
+          events: dateEvents,
+          key: dateKey,
         };
-      }
-
-      if (dayNumber > daysInCurrentMonth) {
-        return {
-          day: dayNumber - daysInCurrentMonth,
-          muted: true,
-          hasEvent: false,
-          key: `next-${dayNumber - daysInCurrentMonth}`,
-        };
-      }
-
-      const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(
-        dayNumber
-      ).padStart(2, "0")}`;
+      });
 
       return {
-        day: dayNumber,
-        muted: false,
-        hasEvent: eventDateKeys.has(dateKey),
-        key: dateKey,
+        year,
+        month,
+        label: formatCalendarMonth(year, month),
+        calendarCells,
       };
-    });
+    }, [calendarMonth, events]);
 
-    return {
-      label: formatCalendarMonth(year, month),
-      calendarCells,
-    };
-  }, [events]);
+    const selectedDateEvents = useMemo(() => {
+      if (!selectedDateKey) {
+        return [];
+      }
+
+      return events.filter(
+        (event) => toHongKongDateKey(event.startAt) === selectedDateKey
+      );
+    }, [events, selectedDateKey]);
+
+    function changeCalendarMonth(direction: -1 | 1) {
+      setCalendarMonth((currentMonth) => {
+        const baseMonth =
+          currentMonth ||
+          getHongKongYearMonth(
+            events[0]?.startAt || "2026-01-01T00:00:00.000Z"
+          );
+
+        const nextDate = new Date(
+          Date.UTC(baseMonth.year, baseMonth.month - 1 + direction, 1)
+        );
+
+        return {
+          year: nextDate.getUTCFullYear(),
+          month: nextDate.getUTCMonth() + 1,
+        };
+      });
+
+      // 切換月份時清除原本日期選取，避免選中上個月的日期。
+      setSelectedDateKey(null);
+    }
+
+    function selectCalendarDate(
+      dateKey: string,
+      _dateEvents: EventView[],
+      muted: boolean
+    ) {
+      if (muted || !dateKey) {
+        return;
+      }
+
+      // 日期只負責選取與更新月曆下方活動摘要，
+      // 不自動捲動到近期活動區。
+      setSelectedDateKey(dateKey);
+    }
 
   const visibleEvents = events.slice(0, 3);
   const visibleModels = models.slice(0, 4);
@@ -649,7 +733,11 @@ export default function Home() {
               const date = formatEventDate(event.startAt);
 
               return (
-                <article className="event-card" key={event.id}>
+                <article
+                  className="event-card"
+                  id={`event-${event.id}`}
+                  key={event.id}
+                >
                   <div
                     className="event-image"
                     style={{ backgroundImage: `url("${event.image}")` }}
@@ -700,11 +788,45 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="mini-calendar" aria-label="活動日曆預覽">
+        <div className="mini-calendar" aria-label="可互動活動日曆">
           <div className="calendar-top">
-            <span>‹</span>
+            <button
+              type="button"
+              aria-label="查看上一個月"
+              onClick={() => changeCalendarMonth(-1)}
+              style={{
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                color: "inherit",
+                font: "inherit",
+                fontSize: "1.35rem",
+                lineHeight: 1,
+                padding: "0.2rem 0.4rem",
+              }}
+            >
+              ‹
+            </button>
+
             <strong>{calendarData.label}</strong>
-            <span>›</span>
+
+            <button
+              type="button"
+              aria-label="查看下一個月"
+              onClick={() => changeCalendarMonth(1)}
+              style={{
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                color: "inherit",
+                font: "inherit",
+                fontSize: "1.35rem",
+                lineHeight: 1,
+                padding: "0.2rem 0.4rem",
+              }}
+            >
+              ›
+            </button>
           </div>
 
           <div className="calendar-week">
@@ -718,19 +840,150 @@ export default function Home() {
           </div>
 
           <div className="calendar-days">
-            {calendarData.calendarCells.map((cell) => (
-              <span
-                className={[
-                  cell.muted ? "muted" : "",
-                  cell.hasEvent ? "has-event" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                key={cell.key}
-              >
-                {cell.day}
-              </span>
-            ))}
+            {calendarData.calendarCells.map((cell) => {
+              const isSelected = cell.dateKey === selectedDateKey;
+
+              return (
+                <button
+                  type="button"
+                  key={cell.key}
+                  disabled={cell.muted}
+                  aria-label={
+                    cell.muted
+                      ? `非本月日期 ${cell.day}`
+                      : cell.hasEvent
+                        ? `${cell.dateKey}，有 ${cell.events.length} 場活動`
+                        : cell.dateKey
+                  }
+                  aria-pressed={isSelected}
+                  onClick={() =>
+                    selectCalendarDate(
+                      cell.dateKey,
+                      cell.events,
+                      cell.muted
+                    )
+                  }
+                  className={[
+                    cell.muted ? "muted" : "",
+                    cell.hasEvent ? "has-event" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  style={{
+                    border: isSelected
+                      ? "1px solid #8E3F23"
+                      : cell.hasEvent
+                        ? "1px solid #D8AB59"
+                        : "1px solid transparent",
+
+                    background: isSelected
+                      ? "#B85C38"
+                      : cell.hasEvent
+                        ? "#E8C98A"
+                        : "transparent",
+
+                    color: isSelected
+                      ? "#FFFFFF"
+                      : cell.hasEvent
+                        ? "#5C3517"
+                        : cell.muted
+                          ? "#C9C2B7"
+                          : "#1D1813",
+
+                    fontWeight: isSelected || cell.hasEvent ? 700 : 500,
+
+                    boxShadow: isSelected
+                      ? "0 3px 8px rgba(126, 61, 33, 0.28)"
+                      : cell.hasEvent
+                        ? "0 2px 5px rgba(140, 97, 35, 0.16)"
+                        : "none",
+
+                    borderRadius: "50%",
+                    cursor: cell.muted ? "default" : "pointer",
+                    minWidth: "1.9rem",
+                    minHeight: "1.9rem",
+                    padding: 0,
+                    font: "inherit",
+                    transition:
+                      "background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease",
+                  }}
+                >
+                  {cell.day}
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            aria-live="polite"
+            style={{
+              minHeight: "3.5rem",
+              marginTop: "1rem",
+              borderTop: "1px solid rgba(25, 20, 15, 0.14)",
+              paddingTop: "0.8rem",
+              fontSize: "0.78rem",
+              lineHeight: 1.6,
+            }}
+          >
+           {selectedDateKey && selectedDateEvents.length > 0 ? (
+              selectedDateEvents.map((event) => (
+                <button
+                  type="button"
+                  key={event.id}
+                  aria-label={`前往 ${event.title} 活動詳情`}
+                  onClick={() => {
+                    document
+                      .getElementById(`event-${event.id}`)
+                      ?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
+                  }}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    margin: 0,
+                    padding: 0,
+                    border: "none",
+                    outline: "none",
+                    background: "transparent",
+                    color: "inherit",
+                    textAlign: "left",
+                    cursor: "pointer",
+                    font: "inherit",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <strong
+                    style={{
+                      display: "block",
+                      color: "#17130f",
+                      fontSize: "0.84rem",
+                      fontWeight: 700,
+                      lineHeight: 1.45,
+                    }}
+                  >
+                    {event.title}
+                  </strong>
+
+                  <span
+                    style={{
+                      display: "block",
+                      marginTop: "0.16rem",
+                      color: "#5c3517",
+                      fontSize: "0.76rem",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {formatTimeRange(event.startAt, event.endAt)} ・ {event.location}
+                  </span>
+                </button>
+              ))
+            ) : selectedDateKey ? (
+              <span>此日期暫時沒有已發布活動。</span>
+            ) : (
+              <span>點選日期查看活動；金色日期代表有攝影活動。</span>
+            )}
           </div>
         </div>
       </section>
