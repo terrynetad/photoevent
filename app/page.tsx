@@ -40,15 +40,15 @@ type ActivityImage = {
 
 type ActivityModelRelation = {
   sort_order: number | null;
-  models: RelationModel | null;
+  models: RelationModel[] | null;
 };
 
 type ActivityThemeRelation = {
-  themes: RelationTheme | null;
+  themes: RelationTheme[] | null;
 };
 
 type ActivityOutfitRelation = {
-  outfits: RelationOutfit | null;
+  outfits: RelationOutfit[] | null;
 };
 
 type ActivityRow = {
@@ -239,7 +239,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  useEffect(() => {
+ useEffect(() => {
     let isMounted = true;
 
     async function loadHomepageData() {
@@ -341,7 +341,7 @@ export default function Home() {
         return;
       }
 
-      const activityRows = (activitiesResult.data ?? []) as ActivityRow[];
+      const activityRows = (activitiesResult.data ?? []) as unknown as ActivityRow[];
       const modelRows = (modelsResult.data ?? []) as ModelRow[];
       const themeRows = (themesResult.data ?? []) as ThemeRow[];
 
@@ -354,17 +354,25 @@ export default function Home() {
           (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
         );
 
-        const modelNames = sortedModelRelations
-          .map((relation) => relation.models?.name?.trim())
-          .filter((name): name is string => Boolean(name));
+        const modelNames = sortedModelRelations.flatMap((relation) =>
+          (relation.models ?? [])
+            .map((model) => model.name?.trim())
+            .filter((name): name is string => Boolean(name))
+        );
 
-        const themeNames = (activity.activity_themes ?? [])
-          .map((relation) => relation.themes?.name?.trim())
-          .filter((name): name is string => Boolean(name));
+        const themeNames = (activity.activity_themes ?? []).flatMap(
+          (relation) =>
+            (relation.themes ?? [])
+              .map((theme) => theme.name?.trim())
+              .filter((name): name is string => Boolean(name))
+        );
 
-        const outfitNames = (activity.activity_outfits ?? [])
-          .map((relation) => relation.outfits?.name?.trim())
-          .filter((name): name is string => Boolean(name));
+        const outfitNames = (activity.activity_outfits ?? []).flatMap(
+          (relation) =>
+            (relation.outfits ?? [])
+              .map((outfit) => outfit.name?.trim())
+              .filter((name): name is string => Boolean(name))
+        );
 
         const tags = [...themeNames, ...outfitNames];
 
@@ -391,6 +399,7 @@ export default function Home() {
 
       const futureEvents = mappedEvents.filter((event) => {
         const comparisonTime = new Date(event.endAt || event.startAt).getTime();
+
         return comparisonTime >= now.getTime();
       });
 
@@ -415,14 +424,16 @@ export default function Home() {
         );
 
         (sourceActivity?.activity_themes ?? []).forEach((relation) => {
-          const themeName = relation.themes?.name?.trim();
+          (relation.themes ?? []).forEach((theme) => {
+            const themeName = theme.name?.trim();
 
-          if (themeName) {
-            categoryCountMap.set(
-              themeName,
-              (categoryCountMap.get(themeName) ?? 0) + 1
-            );
-          }
+            if (themeName) {
+              categoryCountMap.set(
+                themeName,
+                (categoryCountMap.get(themeName) ?? 0) + 1
+              );
+            }
+          });
         });
       });
 
