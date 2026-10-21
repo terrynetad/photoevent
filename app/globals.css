@@ -34,19 +34,13 @@ a {
   text-decoration: none;
 }
 
-.navbar {
-  height: 78px;
-  width: 100%;
-  padding: 0 max(5vw, 28px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: rgba(17, 17, 15, 0.96);
-  color: #fff;
-  position: absolute;
-  top: 0;
-  z-index: 5;
+button {
+  font: inherit;
 }
+
+/* =========================================
+   共用品牌樣式
+   ========================================= */
 
 .brand {
   display: inline-flex;
@@ -58,10 +52,10 @@ a {
 .brand-mark {
   width: 32px;
   height: 32px;
-  border: 1px solid var(--gold-light);
-  color: var(--gold-light);
   display: grid;
   place-items: center;
+  border: 1px solid var(--gold-light);
+  color: var(--gold-light);
   font-family: var(--serif);
   font-size: 20px;
   font-style: italic;
@@ -86,6 +80,36 @@ a {
   letter-spacing: 4px;
 }
 
+.eyebrow {
+  margin: 0 0 16px;
+  color: var(--gold-light);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 2.4px;
+}
+
+.eyebrow.dark {
+  color: #977443;
+}
+
+/* =========================================
+   首頁 Navbar
+   ========================================= */
+
+.navbar {
+  position: absolute;
+  top: 0;
+  z-index: 5;
+  width: 100%;
+  height: 78px;
+  padding: 0 max(5vw, 28px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(17, 17, 15, 0.96);
+  color: #ffffff;
+}
+
 .nav-links {
   display: flex;
   align-items: center;
@@ -104,9 +128,9 @@ a {
 }
 
 .nav-button {
+  padding: 10px 15px;
   border: 1px solid rgba(223, 191, 134, 0.7);
   color: var(--gold-light);
-  padding: 10px 15px;
   font-size: 13px;
   transition: 0.2s ease;
 }
@@ -123,26 +147,35 @@ a {
   margin-left: 7px;
 }
 
+/* =========================================
+   首頁 Hero
+   ========================================= */
+
 .hero {
   min-height: 760px;
   height: 90vh;
   position: relative;
   display: flex;
   align-items: center;
-  color: #fff;
   padding: 125px max(9vw, 40px) 80px;
   overflow: hidden;
+  color: #ffffff;
   background-image:
-    linear-gradient(90deg, rgba(10, 10, 9, 0.88) 0%, rgba(10, 10, 9, 0.53) 45%, rgba(10, 10, 9, 0.16) 100%),
+    linear-gradient(
+      90deg,
+      rgba(10, 10, 9, 0.88) 0%,
+      rgba(10, 10, 9, 0.53) 45%,
+      rgba(10, 10, 9, 0.16) 100%
+    ),
     url("https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=2200&q=90");
-  background-size: cover;
   background-position: center;
+  background-size: cover;
 }
 
 .hero::after {
-  content: "";
   position: absolute;
   inset: 0;
+  content: "";
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.5), transparent 35%);
   pointer-events: none;
 }
@@ -156,18 +189,6 @@ a {
 
 .hero-content {
   max-width: 760px;
-}
-
-.eyebrow {
-  margin: 0 0 16px;
-  color: var(--gold-light);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 2.4px;
-}
-
-.eyebrow.dark {
-  color: #977443;
 }
 
 .hero h1,
@@ -204,11 +225,15 @@ a {
   align-items: center;
   justify-content: center;
   padding: 15px 22px;
+  border: 0;
   background: var(--gold);
   color: #171512;
-  font-weight: 700;
   font-size: 14px;
-  transition: transform 0.2s ease, background 0.2s ease;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .primary-button:hover {
@@ -217,10 +242,10 @@ a {
 }
 
 .text-button {
-  font-size: 14px;
-  color: #f6f3ec;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.55);
   padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+  color: #f6f3ec;
+  font-size: 14px;
 }
 
 .hero-scroll {
@@ -241,13 +266,13 @@ a {
   display: flex;
   align-items: center;
   gap: 14px;
-  border-left: 1px solid var(--gold-light);
   padding-left: 16px;
+  border-left: 1px solid var(--gold-light);
 }
 
 .hero-stat strong {
-  font-family: var(--serif);
   color: var(--gold-light);
+  font-family: var(--serif);
   font-size: 52px;
   font-weight: 500;
   line-height: 1;
@@ -258,6 +283,10 @@ a {
   font-size: 12px;
   line-height: 1.6;
 }
+
+/* =========================================
+   首頁通用 Section
+   ========================================= */
 
 .section {
   padding: 105px max(7vw, 30px);
@@ -281,18 +310,22 @@ a {
 }
 
 .section-heading p:not(.eyebrow) {
-  color: var(--gray);
   margin: 14px 0 0;
+  color: var(--gray);
   font-size: 15px;
 }
 
 .view-all {
-  color: #795a2d;
-  border-bottom: 1px solid #a88858;
   padding-bottom: 5px;
+  border-bottom: 1px solid #a88858;
+  color: #795a2d;
   font-size: 14px;
   white-space: nowrap;
 }
+
+/* =========================================
+   活動卡片
+   ========================================= */
 
 .event-grid {
   display: grid;
@@ -303,8 +336,10 @@ a {
 .event-card {
   overflow: hidden;
   border: 1px solid var(--line);
-  background: #fff;
-  transition: box-shadow 0.25s ease, transform 0.25s ease;
+  background: #ffffff;
+  transition:
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
 }
 
 .event-card:hover {
@@ -313,16 +348,16 @@ a {
 }
 
 .event-image {
-  height: 265px;
   position: relative;
-  background-size: cover;
+  height: 265px;
   background-position: center;
+  background-size: cover;
 }
 
 .event-image::after {
-  content: "";
   position: absolute;
   inset: 0;
+  content: "";
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.42), transparent 50%);
 }
 
@@ -364,10 +399,10 @@ a {
 .event-status {
   right: 14px;
   bottom: 13px;
+  padding: 6px 9px;
   background: rgba(13, 13, 12, 0.78);
   color: #f4e7cf;
   font-size: 11px;
-  padding: 6px 9px;
 }
 
 .event-body {
@@ -388,21 +423,21 @@ a {
 }
 
 .event-info {
-  list-style: none;
   margin: 0;
   padding: 0;
   color: #707069;
   font-size: 13px;
   line-height: 2;
+  list-style: none;
 }
 
 .event-footer {
-  border-top: 1px solid #e8e4dc;
-  margin-top: 17px;
-  padding-top: 14px;
   display: flex;
   align-items: end;
   justify-content: space-between;
+  margin-top: 17px;
+  padding-top: 14px;
+  border-top: 1px solid #e8e4dc;
 }
 
 .event-footer small,
@@ -427,18 +462,22 @@ a {
   font-size: 12px;
 }
 
+/* =========================================
+   月曆 Banner
+   ========================================= */
+
 .calendar-banner {
-  padding: 83px max(7vw, 30px);
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
-  gap: 80px;
   align-items: center;
+  gap: 80px;
+  padding: 83px max(7vw, 30px);
   color: #f7f4ed;
   background:
     linear-gradient(90deg, rgba(18, 17, 15, 0.98), rgba(27, 25, 21, 0.9)),
     url("https://images.unsplash.com/photo-1507504031003-b417219a0fde?auto=format&fit=crop&w=1800&q=80");
-  background-size: cover;
   background-position: center;
+  background-size: cover;
 }
 
 .calendar-banner h2 {
@@ -450,63 +489,46 @@ a {
   max-width: 600px;
   margin: 20px 0 0;
   color: #c2c0ba;
-  line-height: 1.9;
   font-size: 15px;
+  line-height: 1.9;
 }
 
 .mini-calendar {
-  width: 23rem !important;
+  width: 23rem;
   justify-self: end;
   padding: 23px;
   background: #f8f6f0;
   color: var(--black);
   box-shadow: 16px 16px 0 rgba(196, 154, 88, 0.2);
 }
-/* 月曆放大後，同步增加日期區的可讀性與點擊範圍 */
+
 .calendar-top {
-  padding-bottom: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #dedbd3;
+  font-size: 13px;
 }
 
 .calendar-top strong {
   font-size: 1rem;
 }
 
-.calendar-top button {
-  font-size: 1.45rem !important;
-  padding: 4px 9px !important;
-}
-
-.calendar-week {
-  margin-bottom: 10px;
-  font-size: 0.8rem;
-}
-
-.calendar-days {
-  row-gap: 7px;
-  column-gap: 3px;
-}
-
-.calendar-days button {
-  width: 2.15rem !important;
-  height: 2.15rem !important;
-  min-width: 2.15rem !important;
-  min-height: 2.15rem !important;
-  font-size: 0.96rem;
-}
-
-.calendar-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 17px;
-  border-bottom: 1px solid #dedbd3;
-  font-size: 13px;
-}
-
 .calendar-top span {
   color: #946f37;
   font-size: 20px;
+}
+
+.calendar-top button {
+  padding: 4px 9px;
+  border: 0;
+  background: transparent;
+  color: #946f37;
+  font-size: 1.45rem;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .calendar-week,
@@ -517,18 +539,39 @@ a {
 }
 
 .calendar-week {
-  margin: 17px 0 7px;
+  margin: 17px 0 10px;
   color: #9b978d;
-  font-size: 11px;
+  font-size: 0.8rem;
 }
 
-.calendar-days span {
-  width: 29px;
-  height: 29px;
-  margin: 2px auto;
+.calendar-days {
+  row-gap: 7px;
+  column-gap: 3px;
+}
+
+.calendar-days span,
+.calendar-days button {
+  width: 2.15rem;
+  height: 2.15rem;
+  min-width: 2.15rem;
+  min-height: 2.15rem;
+  margin: 0 auto;
   display: grid;
   place-items: center;
-  font-size: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font-size: 0.96rem;
+}
+
+.calendar-days button {
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.18s ease;
 }
 
 .calendar-days .muted {
@@ -538,9 +581,93 @@ a {
 .calendar-days .has-event {
   background: var(--gold);
   border-radius: 50%;
-  color: #fff;
+  color: #ffffff;
   font-weight: 700;
 }
+
+.calendar-days button:not(:disabled):hover {
+  border-color: #d8ab59;
+  background: #f5e8cc;
+  color: #5c3517;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px rgba(140, 97, 35, 0.18);
+}
+
+.calendar-days button[aria-pressed="true"] {
+  border-color: #7d351d;
+  background: #9f4b2d;
+  color: #ffffff;
+}
+
+.calendar-days button[aria-pressed="true"]:hover {
+  border-color: #7d351d;
+  background: #9f4b2d;
+  color: #ffffff;
+}
+
+.calendar-days button:focus-visible {
+  outline: 2px solid #7d351d;
+  outline-offset: 2px;
+}
+
+/* 月曆下方活動摘要：桌面與手機都可用 */
+.calendar-event-summary {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.calendar-event-summary + .calendar-event-summary {
+  margin-top: 0.7rem;
+}
+
+.calendar-event-summary strong {
+  display: block;
+  color: var(--black);
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.45;
+  transition: color 0.18s ease;
+}
+
+.calendar-event-summary span {
+  display: block;
+  margin-top: 0.16rem;
+  color: #5c3517;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.calendar-event-summary:hover strong,
+.calendar-event-summary:focus-visible strong {
+  color: #b85c38;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.calendar-event-summary:hover span {
+  color: #8e3f23;
+}
+
+.calendar-event-summary:focus-visible {
+  outline: 2px solid #b85c38;
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
+/* =========================================
+   Model 區域
+   ========================================= */
 
 .models-section {
   background: #efede6;
@@ -553,17 +680,17 @@ a {
 }
 
 .model-card {
-  min-height: 410px;
   position: relative;
+  min-height: 410px;
   overflow: hidden;
-  background: #222;
+  background: #222222;
 }
 
 .model-image {
   position: absolute;
   inset: 0;
-  background-size: cover;
   background-position: center;
+  background-size: cover;
   transition: transform 0.5s ease;
 }
 
@@ -572,19 +699,19 @@ a {
 }
 
 .model-card::after {
-  content: "";
   position: absolute;
   inset: 0;
+  content: "";
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.83), transparent 58%);
 }
 
 .model-overlay {
   position: absolute;
   z-index: 1;
+  right: 18px;
   bottom: 23px;
   left: 21px;
-  right: 18px;
-  color: #fff;
+  color: #ffffff;
 }
 
 .model-overlay p {
@@ -607,6 +734,10 @@ a {
   font-size: 12px;
 }
 
+/* =========================================
+   分類區域
+   ========================================= */
+
 .categories-section {
   background: var(--paper);
 }
@@ -624,20 +755,22 @@ a {
 }
 
 .category-card {
+  position: relative;
   min-height: 175px;
   padding: 27px;
-  position: relative;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background: #fbfaf7;
-  transition: background 0.25s ease, color 0.25s ease;
+  transition:
+    background 0.25s ease,
+    color 0.25s ease;
 }
 
 .category-card:hover {
   background: var(--black);
-  color: #fff;
+  color: #ffffff;
 }
 
 .category-icon {
@@ -670,15 +803,19 @@ a {
   font-size: 19px;
 }
 
+/* =========================================
+   首頁 CTA + Footer
+   ========================================= */
+
 .cta-section {
   padding: 110px 25px;
+  color: #ffffff;
   text-align: center;
-  color: #fff;
   background:
     linear-gradient(rgba(14, 13, 11, 0.84), rgba(14, 13, 11, 0.92)),
     url("https://images.unsplash.com/photo-1452780212940-6f5c0d14d848?auto=format&fit=crop&w=1800&q=85");
-  background-size: cover;
   background-position: center;
+  background-size: cover;
 }
 
 .cta-section h2 {
@@ -692,8 +829,8 @@ a {
   max-width: 660px;
   margin: 22px auto 30px;
   color: #d2d0ca;
-  line-height: 1.9;
   font-size: 15px;
+  line-height: 1.9;
 }
 
 .light-button {
@@ -713,7 +850,7 @@ footer {
 }
 
 .footer-brand {
-  color: #fff;
+  color: #ffffff;
   transform: scale(0.88);
   transform-origin: left center;
 }
@@ -721,6 +858,390 @@ footer {
 footer > a:last-child {
   color: var(--gold-light);
 }
+
+/* =========================================
+   活動詳情頁 Event Detail Page
+   重要：這裡在所有首頁 media query 前，
+   不會被手機版規則包住。
+   ========================================= */
+
+.detail-page {
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--black);
+}
+
+.detail-nav {
+  width: 100%;
+  min-height: 78px;
+  padding: 0 max(5vw, 28px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #11110f;
+  color: #ffffff;
+}
+
+.detail-nav .brand {
+  color: #ffffff;
+}
+
+.detail-nav-back {
+  color: var(--gold-light);
+  font-size: 13px;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.detail-nav-back:hover {
+  color: #ffffff;
+  transform: translateX(-3px);
+}
+
+.detail-hero {
+  min-height: 650px;
+  padding: 120px max(9vw, 40px) 90px;
+  display: flex;
+  align-items: flex-end;
+  color: #ffffff;
+  background-position: center;
+  background-size: cover;
+}
+
+.detail-hero-content {
+  width: min(920px, 100%);
+}
+
+.detail-hero .eyebrow {
+  color: var(--gold-light);
+}
+
+.detail-date-badge {
+  width: 72px;
+  margin: 0 0 26px;
+  padding: 11px 0 10px;
+  background: var(--gold-light);
+  color: var(--black);
+  text-align: center;
+}
+
+.detail-date-badge strong,
+.detail-date-badge span {
+  display: block;
+}
+
+.detail-date-badge strong {
+  font-family: var(--serif);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.detail-date-badge span {
+  margin-top: 5px;
+  color: #725326;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.4px;
+}
+
+.detail-hero h1 {
+  max-width: 920px;
+  margin: 0;
+  color: #ffffff;
+  font-family: var(--serif);
+  font-size: clamp(42px, 5vw, 76px);
+  font-weight: 600;
+  line-height: 1.17;
+}
+
+.detail-hero-meta {
+  margin: 24px 0 0;
+  color: #ebe6db;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.detail-hero-meta span {
+  margin: 0 8px;
+  color: var(--gold-light);
+}
+
+.detail-hero-actions {
+  margin-top: 34px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.detail-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 15px 22px;
+  border: 0;
+  background: var(--gold);
+  color: #171512;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.detail-primary-button:hover {
+  background: var(--gold-light);
+  transform: translateY(-2px);
+}
+
+.detail-primary-button span {
+  margin-left: 7px;
+}
+
+.detail-text-button {
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.58);
+  color: #f7f4ed;
+  font-size: 14px;
+}
+
+.detail-text-button span {
+  margin-left: 7px;
+}
+
+.detail-content {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 100px max(7vw, 30px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 355px;
+  align-items: start;
+  gap: clamp(45px, 8vw, 120px);
+}
+
+.detail-main h2,
+.detail-sidebar h2,
+.detail-bottom-cta h2 {
+  margin: 0;
+  color: var(--black);
+  font-family: var(--serif);
+  font-size: clamp(31px, 3.4vw, 48px);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.detail-description {
+  max-width: 760px;
+  margin-top: 28px;
+  color: #5d5a53;
+  font-size: 16px;
+  line-height: 2;
+}
+
+.detail-description p {
+  margin: 0 0 17px;
+}
+
+.detail-description strong {
+  margin-left: 6px;
+  color: var(--black);
+}
+
+.detail-tag-groups {
+  margin-top: 42px;
+  padding-top: 35px;
+  display: grid;
+  gap: 28px;
+  border-top: 1px solid var(--line);
+}
+
+.detail-tag-groups h3 {
+  margin: 0 0 13px;
+  color: #7d5d2f;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1.2px;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.detail-tags span {
+  padding: 8px 11px;
+  border: 1px solid #dfc28e;
+  background: #f7ebd4;
+  color: #62421a;
+  font-size: 13px;
+}
+
+.detail-gallery {
+  margin-top: 65px;
+  padding-top: 45px;
+  border-top: 1px solid var(--line);
+}
+
+.detail-gallery-heading {
+  margin-bottom: 22px;
+}
+
+.detail-gallery-heading h2 {
+  font-size: clamp(28px, 3vw, 40px);
+}
+
+.detail-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.detail-gallery-image {
+  min-height: 255px;
+  background-position: center;
+  background-size: cover;
+}
+
+.detail-info-card {
+  padding: 31px 28px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  box-shadow: 13px 13px 0 rgba(196, 154, 88, 0.16);
+}
+
+.detail-info-card h2 {
+  margin-top: 6px;
+  font-size: 31px;
+}
+
+.detail-info-card dl {
+  margin: 28px 0 0;
+}
+
+.detail-info-card dl > div {
+  padding: 17px 0;
+  border-top: 1px solid #ece8df;
+}
+
+.detail-info-card dt {
+  margin-bottom: 7px;
+  color: #8b877e;
+  font-size: 11px;
+}
+
+.detail-info-card dd {
+  margin: 0;
+  color: var(--black);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.65;
+}
+
+.detail-info-card .detail-price {
+  color: #704d1d;
+  font-family: var(--serif);
+  font-size: 25px;
+}
+
+.detail-registration-note {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f5ead5;
+  color: #62421a;
+  line-height: 1.6;
+}
+
+.detail-registration-note strong,
+.detail-registration-note span {
+  display: block;
+}
+
+.detail-registration-note strong {
+  font-size: 13px;
+}
+
+.detail-registration-note span {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.detail-bottom-cta {
+  padding: 105px 25px;
+  color: #ffffff;
+  text-align: center;
+  background:
+    linear-gradient(rgba(14, 13, 11, 0.86), rgba(14, 13, 11, 0.94)),
+    url("https://images.unsplash.com/photo-1452780212940-6f5c0d14d848?auto=format&fit=crop&w=1800&q=85");
+  background-position: center;
+  background-size: cover;
+}
+
+.detail-bottom-cta .eyebrow {
+  color: var(--gold-light);
+}
+
+.detail-bottom-cta h2 {
+  max-width: 760px;
+  margin: 0 auto 30px;
+  color: #ffffff;
+  font-size: clamp(34px, 4.8vw, 60px);
+}
+
+.detail-footer {
+  min-height: 100px;
+  padding: 25px max(7vw, 30px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+  background: #0e0e0c;
+  color: #b9b7b1;
+  font-size: 12px;
+}
+
+.detail-footer .brand {
+  color: #ffffff;
+}
+
+.detail-state-page {
+  min-height: 100vh;
+  padding: 110px 25px;
+  display: grid;
+  place-items: center;
+}
+
+.detail-state {
+  max-width: 620px;
+  text-align: center;
+}
+
+.detail-state h1 {
+  margin: 0;
+  color: var(--black);
+  font-family: var(--serif);
+  font-size: clamp(36px, 5vw, 58px);
+  line-height: 1.3;
+}
+
+.detail-state > p:not(.eyebrow) {
+  margin: 20px 0 30px;
+  color: var(--gray);
+  line-height: 1.9;
+}
+
+.detail-back-link {
+  padding-bottom: 4px;
+  border-bottom: 1px solid #b99865;
+  color: #765426;
+  font-size: 14px;
+}
+
+/* =========================================
+   Tablet
+   ========================================= */
 
 @media (max-width: 900px) {
   .nav-links {
@@ -740,7 +1261,23 @@ footer > a:last-child {
   .mini-calendar {
     justify-self: start;
   }
+
+  .detail-content {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-sidebar {
+    max-width: 600px;
+  }
+
+  .detail-hero {
+    min-height: 570px;
+  }
 }
+
+/* =========================================
+   Mobile
+   ========================================= */
 
 @media (max-width: 600px) {
   .navbar {
@@ -815,71 +1352,19 @@ footer > a:last-child {
   }
 
   .mini-calendar {
-    width: 100%;
-    padding: 17px 12px;
-  }
-
-  .calendar-days span {
-    width: 26px;
-    height: 26px;
-  }
-
-  .category-card {
-    min-height: 145px;
-  }
-
-  .cta-section {
-    padding: 80px 23px;
-  }
-
-  .calendar-days button:not(:disabled):hover {
-  background: #f5e8cc !important;
-  color: #5c3517 !important;
-  border-color: #d8ab59 !important;
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(140, 97, 35, 0.18) !important;
-  }
-
-  .calendar-days button[aria-pressed="true"]:hover {
-    background: #9f4b2d !important;
-    color: #ffffff !important;
-    border-color: #7d351d !important;
-  }
-
-  .calendar-days button:focus-visible {
-    outline: 2px solid #7d351d;
-    outline-offset: 2px;
-  }
-
-  footer {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 13px;
-  }
-
-  /* =========================================
-   首頁 Hero 月曆放大版
-   保留既有金色／焦糖色與互動邏輯
-   ========================================= */
-
-  .mini-calendar {
-    width: 20.5rem;
-    min-width: 20.5rem;
-    padding: 1.45rem 1.5rem 1.35rem;
+    width: min(20.5rem, calc(100vw - 2.5rem));
+    min-width: 0;
+    padding: 1.25rem 1rem;
   }
 
   .calendar-top {
-    padding-bottom: 1rem;
     margin-bottom: 1rem;
-  }
-
-  .calendar-top strong {
-    font-size: 1rem;
+    padding-bottom: 1rem;
   }
 
   .calendar-top button {
-    font-size: 1.55rem !important;
-    padding: 0.25rem 0.55rem !important;
+    padding: 0.25rem 0.55rem;
+    font-size: 1.55rem;
   }
 
   .calendar-week {
@@ -892,78 +1377,74 @@ footer > a:last-child {
     column-gap: 0.2rem;
   }
 
+  .calendar-days span,
   .calendar-days button {
-    width: 2.25rem !important;
-    height: 2.25rem !important;
-    min-width: 2.25rem !important;
-    min-height: 2.25rem !important;
+    width: 2.25rem;
+    height: 2.25rem;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
     font-size: 0.98rem;
   }
 
-  /* 手機或窄螢幕時，不讓放大月曆超出畫面 */
-  @media (max-width: 768px) {
-    .mini-calendar {
-      width: min(20.5rem, calc(100vw - 2.5rem));
-      min-width: 0;
-    }
+  .category-card {
+    min-height: 145px;
   }
 
-  /* =========================================
-   月曆下方活動摘要按鈕
-   點擊後才捲動到對應活動卡
-   ========================================= */
-
-  .calendar-event-summary {
-    display: block;
-    width: 100%;
-    border: 0 !important;
-    outline: 0;
-    margin: 0;
-    padding: 0;
-    background: transparent !important;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-    font: inherit;
-    line-height: 1.45;
+  .cta-section {
+    padding: 80px 23px;
   }
 
-  .calendar-event-summary + .calendar-event-summary {
-    margin-top: 0.7rem;
+  footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 13px;
   }
 
-  .calendar-event-summary strong {
-    display: block;
-    color: var(--black);
-    font-size: 0.84rem;
-    font-weight: 700;
-    line-height: 1.45;
-    transition: color 0.18s ease;
+  .detail-nav {
+    min-height: 68px;
+    padding: 0 20px;
   }
 
-  .calendar-event-summary span {
-    display: block;
-    margin-top: 0.16rem;
-    color: #5c3517;
-    font-size: 0.76rem;
-    line-height: 1.5;
+  .detail-nav-back {
+    font-size: 12px;
   }
 
-  .calendar-event-summary:hover strong,
-  .calendar-event-summary:focus-visible strong {
-    color: #b85c38;
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 3px;
+  .detail-hero {
+    min-height: 580px;
+    padding: 105px 25px 65px;
+    background-position: center;
   }
 
-  .calendar-event-summary:hover span {
-    color: #8e3f23;
+  .detail-hero-actions {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 19px;
   }
 
-  .calendar-event-summary:focus-visible {
-    outline: 2px solid #b85c38;
-    outline-offset: 4px;
-    border-radius: 3px;
+  .detail-content {
+    padding: 70px 20px;
+  }
+
+  .detail-gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-gallery-image {
+    min-height: 225px;
+  }
+
+  .detail-info-card {
+    padding: 25px 20px;
+    box-shadow: 8px 8px 0 rgba(196, 154, 88, 0.14);
+  }
+
+  .detail-bottom-cta {
+    padding: 80px 22px;
+  }
+
+  .detail-footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 13px;
   }
 }

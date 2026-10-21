@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
@@ -92,6 +93,7 @@ type ThemeRow = {
 
 type EventView = {
   id: string;
+  slug: string;
   title: string;
   startAt: string;
   endAt: string | null;
@@ -397,6 +399,7 @@ export default function Home() {
 
           return {
             id: activity.id,
+            slug: activity.slug?.trim() || "",
             title: activity.title,
             startAt: activity.start_at,
             endAt: activity.end_at,
@@ -766,9 +769,18 @@ export default function Home() {
                         <strong>{event.price}</strong>
                       </span>
 
-                      <a href="#calendar" aria-label={`查看 ${event.title} 詳情`}>
-                        查看詳情 <span>→</span>
-                      </a>
+                      {event.slug ? (
+                        <Link
+                          href={`/events/${event.slug}`}
+                          aria-label={`查看 ${event.title} 詳情`}
+                        >
+                          查看詳情 <span>→</span>
+                        </Link>
+                      ) : (
+                        <span title="此活動尚未設定 slug，暫時無法開啟詳情頁">
+                          詳情準備中
+                        </span>
+                      )}
                     </div>
                   </div>
                 </article>
@@ -926,67 +938,102 @@ export default function Home() {
             }}
           >
            {selectedDateKey && selectedDateEvents.length > 0 ? (
-              selectedDateEvents.map((event) => (
-                <button
-                  type="button"
-                  key={event.id}
-                  aria-label={`前往 ${event.title} 活動詳情`}
-                  onClick={() => {
-                    document
-                      .getElementById(`event-${event.id}`)
-                      ?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                      });
-                  }}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    margin: 0,
-                    padding: 0,
-                    border: "none",
-                    outline: "none",
-                    background: "transparent",
-                    color: "inherit",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    font: "inherit",
-                    lineHeight: 1.45,
-                  }}
-                >
-                  <strong
+              selectedDateEvents.map((event) =>
+                event.slug ? (
+                  <Link
+                    href={`/events/${event.slug}`}
+                    key={event.id}
+                    aria-label={`查看 ${event.title} 活動詳情`}
                     style={{
                       display: "block",
-                      color: "#17130f",
-                      fontSize: "0.84rem",
-                      fontWeight: 700,
+                      width: "100%",
+                      margin: 0,
+                      padding: 0,
+                      border: "none",
+                      outline: "none",
+                      background: "transparent",
+                      color: "inherit",
+                      textAlign: "left",
+                      cursor: "pointer",
+                      font: "inherit",
                       lineHeight: 1.45,
                     }}
                   >
-                    {event.title}
-                  </strong>
+                    <strong
+                      style={{
+                        display: "block",
+                        color: "#17130f",
+                        fontSize: "0.84rem",
+                        fontWeight: 700,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {event.title}
+                    </strong>
 
-                  <span
+                    <span
+                      style={{
+                        display: "block",
+                        marginTop: "0.16rem",
+                        color: "#5c3517",
+                        fontSize: "0.76rem",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {formatTimeRange(event.startAt, event.endAt)} ・ {event.location}
+                    </span>
+                  </Link>
+                ) : (
+                  <div
+                    key={event.id}
                     style={{
-                      display: "block",
-                      marginTop: "0.16rem",
-                      color: "#5c3517",
-                      fontSize: "0.76rem",
-                      lineHeight: 1.5,
+                      width: "100%",
+                      color: "inherit",
+                      lineHeight: 1.45,
                     }}
                   >
-                    {formatTimeRange(event.startAt, event.endAt)} ・ {event.location}
-                  </span>
-                </button>
-              ))
-            ) : selectedDateKey ? (
-              <span>此日期暫時沒有已發布活動。</span>
+                    <strong
+                      style={{
+                        display: "block",
+                        color: "#17130f",
+                        fontSize: "0.84rem",
+                        fontWeight: 700,
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      {event.title}
+                    </strong>
+
+                    <span
+                      style={{
+                        display: "block",
+                        marginTop: "0.16rem",
+                        color: "#5c3517",
+                        fontSize: "0.76rem",
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {formatTimeRange(event.startAt, event.endAt)} ・ {event.location}
+                    </span>
+                  </div>
+                )
+              )
             ) : (
-              <span>點選日期查看活動；金色日期代表有攝影活動。</span>
+              <p
+                style={{
+                  margin: 0,
+                  color: "#7a746a",
+                  fontSize: "0.82rem",
+                  lineHeight: 1.7,
+                }}
+              >
+                此日期暫無活動安排。
+              </p>
             )}
           </div>
         </div>
-      </section>
+      </section>  
+      
 
       <section className="section models-section" id="models">
         <div className="section-heading">
