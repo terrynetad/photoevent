@@ -40,15 +40,15 @@ type ActivityImage = {
 
 type ActivityModelRelation = {
   sort_order: number | null;
-  models: RelationModel[] | null;
+  models: RelationModel | RelationModel[] | null;
 };
 
 type ActivityThemeRelation = {
-  themes: RelationTheme[] | null;
+  themes: RelationTheme | RelationTheme[] | null;
 };
 
 type ActivityOutfitRelation = {
-  outfits: RelationOutfit[] | null;
+  outfits: RelationOutfit | RelationOutfit[] | null;
 };
 
 type ActivityRow = {
@@ -116,6 +116,14 @@ type CategoryView = {
   name: string;
   count: string;
 };
+
+function ensureArray<T>(value: T | T[] | null | undefined): T[] {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
+}
 
 function getDatePart(
   value: string | Date,
@@ -239,218 +247,230 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
- useEffect(() => {
+  useEffect(() => {
     let isMounted = true;
 
     async function loadHomepageData() {
       setIsLoading(true);
       setLoadError("");
 
-      const [activitiesResult, modelsResult, themesResult] = await Promise.all([
-        supabase
-          .from("activities")
-          .select(
-            `
-              id,
-              title,
-              slug,
-              start_at,
-              end_at,
-              location_name,
-              location_address,
-              price,
-              currency,
-              cover_image_url,
-              status,
-              is_featured,
-              sort_order,
-              activity_images (
-                image_url,
-                alt_text,
-                sort_order
-              ),
-              activity_models (
-                sort_order,
-                models (
-                  name
-                )
-              ),
-              activity_themes (
-                themes (
-                  name
-                )
-              ),
-              activity_outfits (
-                outfits (
-                  name
-                )
+      try {
+        const [activitiesResult, modelsResult, themesResult] =
+          await Promise.all([
+            supabase
+              .from("activities")
+              .select(
+                `
+                  id,
+                  title,
+                  slug,
+                  start_at,
+                  end_at,
+                  location_name,
+                  location_address,
+                  price,
+                  currency,
+                  cover_image_url,
+                  status,
+                  is_featured,
+                  sort_order,
+                  activity_images (
+                    image_url,
+                    alt_text,
+                    sort_order
+                  ),
+                  activity_models (
+                    sort_order,
+                    models (
+                      name
+                    )
+                  ),
+                  activity_themes (
+                    themes (
+                      name
+                    )
+                  ),
+                  activity_outfits (
+                    outfits (
+                      name
+                    )
+                  )
+                `
               )
-            `
-          )
-          .eq("status", "published")
-          .order("start_at", { ascending: true })
-          .order("sort_order", { ascending: true }),
+              .eq("status", "published")
+              .order("start_at", { ascending: true })
+              .order("sort_order", { ascending: true }),
 
-        supabase
-          .from("models")
-          .select(
-            `
-              id,
-              name,
-              slug,
-              bio,
-              avatar_url,
-              is_active,
-              sort_order
-            `
-          )
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true })
-          .order("name", { ascending: true }),
+            supabase
+              .from("models")
+              .select(
+                `
+                  id,
+                  name,
+                  slug,
+                  bio,
+                  avatar_url,
+                  is_active,
+                  sort_order
+                `
+              )
+              .eq("is_active", true)
+              .order("sort_order", { ascending: true })
+              .order("name", { ascending: true }),
 
-        supabase
-          .from("themes")
-          .select(
-            `
-              id,
-              name,
-              slug,
-              description,
-              is_active,
-              sort_order
-            `
-          )
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true })
-          .order("name", { ascending: true }),
-      ]);
+            supabase
+              .from("themes")
+              .select(
+                `
+                  id,
+                  name,
+                  slug,
+                  description,
+                  is_active,
+                  sort_order
+                `
+              )
+              .eq("is_active", true)
+              .order("sort_order", { ascending: true })
+              .order("name", { ascending: true }),
+          ]);
 
-      const firstError =
-        activitiesResult.error || modelsResult.error || themesResult.error;
+        const firstError =
+          activitiesResult.error || modelsResult.error || themesResult.error;
 
-      if (firstError) {
-        console.error("Supabase homepage query failed:", firstError);
+        if (firstError) {
+          console.error("Supabase homepage query failed:", firstError);
+
+          if (isMounted) {
+            setLoadError(
+              "暫時未能載入活動資料。請稍後再試，或檢查 Supabase 的 RLS 讀取權限設定。"
+            );
+            setIsLoading(false);
+          }
+
+          return;
+        }
+
+        const activityRows = (activitiesResult.data ?? []) as unknown as ActivityRow[];
+        const modelRows = (modelsResult.data ?? []) as unknown as ModelRow[];
+        const themeRows = (themesResult.data ?? []) as unknown as ThemeRow[];
+
+        const mappedEvents = activityRows.map((activity, index): EventView => {
+          const sortedImages = [...(activity.activity_images ?? [])].sort(
+            (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
+          );
+
+          const sortedModelRelations = [
+            ...(activity.activity_models ?? []),
+          ].sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
+
+          const modelNames = sortedModelRelations.flatMap((relation) =>
+            ensureArray(relation.models)
+              .map((model) => model.name?.trim())
+              .filter((name): name is string => Boolean(name))
+          );
+
+          const themeNames = (activity.activity_themes ?? []).flatMap(
+            (relation) =>
+              ensureArray(relation.themes)
+                .map((theme) => theme.name?.trim())
+                .filter((name): name is string => Boolean(name))
+          );
+
+          const outfitNames = (activity.activity_outfits ?? []).flatMap(
+            (relation) =>
+              ensureArray(relation.outfits)
+                .map((outfit) => outfit.name?.trim())
+                .filter((name): name is string => Boolean(name))
+          );
+
+          const tags = [...themeNames, ...outfitNames];
+
+          return {
+            id: activity.id,
+            title: activity.title,
+            startAt: activity.start_at,
+            endAt: activity.end_at,
+            location:
+              activity.location_name?.trim() ||
+              activity.location_address?.trim() ||
+              "地點待公布",
+            price: formatPrice(activity.price, activity.currency),
+            themeText: tags.length > 0 ? tags.join("・") : "攝影活動",
+            image:
+              activity.cover_image_url?.trim() ||
+              sortedImages[0]?.image_url?.trim() ||
+              FALLBACK_EVENT_IMAGES[
+                index % FALLBACK_EVENT_IMAGES.length
+              ],
+            modelNames,
+          };
+        });
+
+        const now = new Date();
+
+        const futureEvents = mappedEvents.filter((event) => {
+          const comparisonTime = new Date(
+            event.endAt || event.startAt
+          ).getTime();
+
+          return comparisonTime >= now.getTime();
+        });
+
+        const displayEvents =
+          futureEvents.length > 0 ? futureEvents : mappedEvents;
+
+        const mappedModels = modelRows.map((model, index): ModelView => ({
+          id: model.id,
+          name: model.name,
+          englishName: getEnglishName(model.name),
+          style: model.bio?.trim() || "攝影活動 Model",
+          image:
+            model.avatar_url?.trim() ||
+            FALLBACK_MODEL_IMAGES[index % FALLBACK_MODEL_IMAGES.length],
+        }));
+
+        const categoryCountMap = new Map<string, number>();
+
+        activityRows.forEach((activity) => {
+          (activity.activity_themes ?? []).forEach((relation) => {
+            ensureArray(relation.themes).forEach((theme) => {
+              const themeName = theme.name?.trim();
+
+              if (themeName) {
+                categoryCountMap.set(
+                  themeName,
+                  (categoryCountMap.get(themeName) ?? 0) + 1
+                );
+              }
+            });
+          });
+        });
+
+        const mappedCategories = themeRows.map(
+          (theme, index): CategoryView => ({
+            id: theme.id,
+            icon: CATEGORY_ICONS[index % CATEGORY_ICONS.length],
+            name: theme.name,
+            count: `${categoryCountMap.get(theme.name) ?? 0} 場活動`,
+          })
+        );
+
+        if (isMounted) {
+          setEvents(displayEvents);
+          setModels(mappedModels);
+          setCategories(mappedCategories);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Supabase homepage request crashed:", error);
 
         if (isMounted) {
           setLoadError(
-            "暫時未能載入活動資料。請稍後再試，或檢查 Supabase 的 RLS 讀取權限設定。"
+            "活動資料載入時發生錯誤，請稍後重新整理頁面再試。"
           );
           setIsLoading(false);
         }
-
-        return;
-      }
-
-      const activityRows = (activitiesResult.data ?? []) as unknown as ActivityRow[];
-      const modelRows = (modelsResult.data ?? []) as ModelRow[];
-      const themeRows = (themesResult.data ?? []) as ThemeRow[];
-
-      const mappedEvents = activityRows.map((activity, index): EventView => {
-        const sortedImages = [...(activity.activity_images ?? [])].sort(
-          (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
-        );
-
-        const sortedModelRelations = [...(activity.activity_models ?? [])].sort(
-          (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
-        );
-
-        const modelNames = sortedModelRelations.flatMap((relation) =>
-          (relation.models ?? [])
-            .map((model) => model.name?.trim())
-            .filter((name): name is string => Boolean(name))
-        );
-
-        const themeNames = (activity.activity_themes ?? []).flatMap(
-          (relation) =>
-            (relation.themes ?? [])
-              .map((theme) => theme.name?.trim())
-              .filter((name): name is string => Boolean(name))
-        );
-
-        const outfitNames = (activity.activity_outfits ?? []).flatMap(
-          (relation) =>
-            (relation.outfits ?? [])
-              .map((outfit) => outfit.name?.trim())
-              .filter((name): name is string => Boolean(name))
-        );
-
-        const tags = [...themeNames, ...outfitNames];
-
-        return {
-          id: activity.id,
-          title: activity.title,
-          startAt: activity.start_at,
-          endAt: activity.end_at,
-          location:
-            activity.location_name?.trim() ||
-            activity.location_address?.trim() ||
-            "地點待公布",
-          price: formatPrice(activity.price, activity.currency),
-          themeText: tags.length > 0 ? tags.join("・") : "攝影活動",
-          image:
-            activity.cover_image_url?.trim() ||
-            sortedImages[0]?.image_url?.trim() ||
-            FALLBACK_EVENT_IMAGES[index % FALLBACK_EVENT_IMAGES.length],
-          modelNames,
-        };
-      });
-
-      const now = new Date();
-
-      const futureEvents = mappedEvents.filter((event) => {
-        const comparisonTime = new Date(event.endAt || event.startAt).getTime();
-
-        return comparisonTime >= now.getTime();
-      });
-
-      const displayEvents =
-        futureEvents.length > 0 ? futureEvents : mappedEvents;
-
-      const mappedModels = modelRows.map((model, index): ModelView => ({
-        id: model.id,
-        name: model.name,
-        englishName: getEnglishName(model.name),
-        style: model.bio?.trim() || "攝影活動 Model",
-        image:
-          model.avatar_url?.trim() ||
-          FALLBACK_MODEL_IMAGES[index % FALLBACK_MODEL_IMAGES.length],
-      }));
-
-      const categoryCountMap = new Map<string, number>();
-
-      mappedEvents.forEach((event) => {
-        const sourceActivity = activityRows.find(
-          (activity) => activity.id === event.id
-        );
-
-        (sourceActivity?.activity_themes ?? []).forEach((relation) => {
-          (relation.themes ?? []).forEach((theme) => {
-            const themeName = theme.name?.trim();
-
-            if (themeName) {
-              categoryCountMap.set(
-                themeName,
-                (categoryCountMap.get(themeName) ?? 0) + 1
-              );
-            }
-          });
-        });
-      });
-
-      const mappedCategories = themeRows.map(
-        (theme, index): CategoryView => ({
-          id: theme.id,
-          icon: CATEGORY_ICONS[index % CATEGORY_ICONS.length],
-          name: theme.name,
-          count: `${categoryCountMap.get(theme.name) ?? 0} 場活動`,
-        })
-      );
-
-      if (isMounted) {
-        setEvents(displayEvents);
-        setModels(mappedModels);
-        setCategories(mappedCategories);
-        setIsLoading(false);
       }
     }
 
@@ -462,15 +482,19 @@ export default function Home() {
   }, []);
 
   const calendarData = useMemo(() => {
-  const referenceDate =
-    events[0]?.startAt || "2026-01-01T00:00:00.000Z";
+    const referenceDate =
+      events[0]?.startAt || "2026-01-01T00:00:00.000Z";
 
-  const { year, month } = getHongKongYearMonth(referenceDate);
+    const { year, month } = getHongKongYearMonth(referenceDate);
 
-  const firstDayWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+    const firstDayWeekday = new Date(
+      Date.UTC(year, month - 1, 1)
+    ).getUTCDay();
+
     const daysInCurrentMonth = new Date(
       Date.UTC(year, month, 0)
     ).getUTCDate();
+
     const daysInPreviousMonth = new Date(
       Date.UTC(year, month - 1, 0)
     ).getUTCDate();
