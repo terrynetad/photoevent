@@ -246,6 +246,7 @@
 .cancelButton,
 .refreshButton,
 .editButton,
+.duplicateButton,
 .deleteButton,
 .openEventButton,
 .uploadButton {
@@ -279,6 +280,7 @@
 .cancelButton:disabled,
 .refreshButton:disabled,
 .editButton:disabled,
+.duplicateButton:disabled,
 .deleteButton:disabled,
 .uploadButton:has(input:disabled) {
   cursor: not-allowed;
@@ -517,6 +519,7 @@
 
 .openEventButton,
 .editButton,
+.duplicateButton,
 .deleteButton {
   min-height: 31px;
   padding: 0 10px;
@@ -526,6 +529,16 @@
 .openEventButton {
   color: #5d431d;
   background: #f8eacb;
+}
+
+.duplicateButton {
+  color: #5e451e;
+  background: #f3e3bd;
+}
+
+.duplicateButton:hover:not(:disabled) {
+  color: #fffdf8;
+  background: #9a733b;
 }
 
 .editButton {

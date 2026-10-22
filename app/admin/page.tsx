@@ -155,11 +155,11 @@ function slugify(value: string) {
     .toLowerCase()
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
+    .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .replace(/-{2,}/g, "-");
 
-  return slug || `event-${Date.now()}`;
+  return slug || "activity";
 }
 
 function escapeFileName(value: string) {
@@ -167,6 +167,31 @@ function escapeFileName(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9.-]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function createUniqueId() {
+  if (
+    typeof globalThis !== "undefined" &&
+    globalThis.crypto &&
+    typeof globalThis.crypto.randomUUID === "function"
+  ) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  /*
+   * HTTP + 內網 IP（例如 http://192.168.x.x:3000）通常不是 Secure Context，
+   * 因此某些瀏覽器不提供 crypto.randomUUID()。
+   * 此 fallback 用於生成 Storage 檔名的唯一識別碼。
+   */
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+    /[xy]/g,
+    (character) => {
+      const random = Math.floor(Math.random() * 16);
+      const value = character === "x" ? random : (random & 0x3) | 0x8;
+
+      return value.toString(16);
+    }
+  );
 }
 
 function getFileExtension(file: File) {
@@ -317,6 +342,8 @@ export default function AdminPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formMessage, setFormMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  
+  const [duplicatingActivityId, setDuplicatingActivityId] = useState<string | null>(null);
 
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState("");
@@ -732,7 +759,7 @@ export default function AdminPage() {
     }> {
     const extension = getFileExtension(file);
     const originalName = escapeFileName(file.name.replace(/\.[^/.]+$/, ""));
-    const fileName = `${Date.now()}-${crypto.randomUUID()}-${originalName}.${extension}`;
+    const fileName = `${Date.now()}-${createUniqueId()}-${originalName}.${extension}`;
     const storagePath = `${activityId}/${folder}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
@@ -782,6 +809,90 @@ export default function AdminPage() {
         console.warn("Storage image removal failed:", error.message);
     }
     }
+  
+  function getStorageFileExtension(storagePath: string) {
+    const fileName = storagePath.split("/").pop() || "";
+    const extension = fileName.split(".").pop()?.toLowerCase();
+
+    return extension && /^[a-z0-9]+$/.test(extension) ? extension : "jpg";
+  }
+
+  async function copyStorageImageToNewActivity(
+    sourceUrl: string | null | undefined,
+    newActivityId: string,
+    folder: "cover" | "gallery",
+    index: number
+  ): Promise<{
+    publicUrl: string;
+    createdStoragePath: string | null;
+  }> {
+    if (!sourceUrl) {
+      return {
+        publicUrl: "",
+        createdStoragePath: null,
+      };
+    }
+
+    const sourceStoragePath = getStoragePathFromPublicUrl(sourceUrl);
+
+    /*
+     * 如果不是本系統 activity-images bucket 的 URL，例如外部圖片網址，
+     * 不需要複製 Storage 檔案，也不會被 deleteActivity() 刪除。
+     * 因此直接保留該外部 URL。
+     */
+    if (!sourceStoragePath) {
+      return {
+        publicUrl: sourceUrl,
+        createdStoragePath: null,
+      };
+    }
+
+    const extension = getStorageFileExtension(sourceStoragePath);
+    const destinationPath = `${newActivityId}/${folder}/${Date.now()}-${index}-${createUniqueId()}.${extension}`;
+
+    const { error: copyError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .copy(sourceStoragePath, destinationPath);
+
+    if (copyError) {
+      throw new Error(`複製圖片檔案失敗：${copyError.message}`);
+    }
+
+    const { data: publicUrlData } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(destinationPath);
+
+    const publicUrl = publicUrlData?.publicUrl;
+
+    if (!publicUrl) {
+      await supabase.storage.from(STORAGE_BUCKET).remove([destinationPath]);
+
+      throw new Error("圖片已複製，但無法取得新圖片公開網址。");
+    }
+
+    return {
+      publicUrl,
+      createdStoragePath: destinationPath,
+    };
+  }
+
+  async function cleanupDuplicatedActivity(
+    activityId: string,
+    storagePaths: string[]
+  ) {
+    await Promise.all([
+      supabase.from("activity_models").delete().eq("activity_id", activityId),
+      supabase.from("activity_themes").delete().eq("activity_id", activityId),
+      supabase.from("activity_outfits").delete().eq("activity_id", activityId),
+      supabase.from("activity_images").delete().eq("activity_id", activityId),
+    ]);
+
+    await supabase.from("activities").delete().eq("id", activityId);
+
+    if (storagePaths.length > 0) {
+      await supabase.storage.from(STORAGE_BUCKET).remove(storagePaths);
+    }
+  }
 
   async function validateSlug(slug: string, activityId: string | null) {
     let query = supabase.from("activities").select("id").eq("slug", slug);
@@ -1075,6 +1186,243 @@ export default function AdminPage() {
 
     await loadAdminData();
     setFormMessage("圖片已刪除。");
+  }
+
+  async function duplicateActivity(activity: ActivityRow) {
+    const confirmed = window.confirm(
+      `確定複製「${activity.title}」？\n\n系統會建立一個新的草稿活動，並實體複製 Cover Image、Gallery Images、Model、主題及服裝關聯。\n\n新副本不會立即公開。`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+   const duplicateTitle = `${activity.title}（副本）`;
+
+    /*
+    * 原活動 slug 已通過 activities_slug_format 資料庫限制，
+    * 副本直接沿用原 slug，再附加純英文、數字與連字號的唯一尾碼。
+    *
+    * 範例：
+    * yuki-autumn-uniform-outdoor-2026-12-06
+    * ↓
+    * yuki-autumn-uniform-outdoor-2026-12-06-copy-1760000000000
+    */
+    const sourceSlug = (activity.slug || "activity")
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .replace(/-{2,}/g, "-");
+
+    const duplicateSlug = `${sourceSlug || "activity"}-copy-${Date.now()}`;
+
+    const sourceImages = [...(activity.activity_images || [])].sort(
+      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+    );
+
+    const duplicateForm: FormState = {
+      id: null,
+      title: duplicateTitle,
+      slug: duplicateSlug,
+      description: activity.description || "",
+      notes: activity.notes || "",
+      start_at: getHongKongDateTimeInput(activity.start_at),
+      end_at: getHongKongDateTimeInput(activity.end_at),
+      registration_deadline: getHongKongDateTimeInput(
+        activity.registration_deadline
+      ),
+      location_name: activity.location_name || "",
+      location_address: activity.location_address || "",
+      map_url: activity.map_url || "",
+      price:
+        activity.price === null || activity.price === undefined
+          ? ""
+          : String(activity.price),
+      currency: activity.currency || "HKD",
+      contact_name: activity.contact_name || "",
+      contact_url: activity.contact_url || "",
+      status: "draft",
+      is_featured: false,
+      sort_order: String(activity.sort_order ?? 0),
+      modelIds: [...(activity.activity_models || [])]
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((relation) => relation.model_id),
+      themeIds: (activity.activity_themes || []).map(
+        (relation) => relation.theme_id
+      ),
+      outfitIds: (activity.activity_outfits || []).map(
+        (relation) => relation.outfit_id
+      ),
+      cover_image_url: "",
+      images: [],
+    };
+
+    let newActivityId = "";
+    const createdStoragePaths: string[] = [];
+
+    setDuplicatingActivityId(activity.id);
+    setDataMessage(`正在複製「${activity.title}」及其圖片⋯`);
+
+    try {
+      const { data: createdActivity, error: activityCreateError } =
+        await supabase
+          .from("activities")
+          .insert({
+            title: duplicateForm.title,
+            slug: duplicateForm.slug,
+            description: duplicateForm.description || null,
+            notes: duplicateForm.notes || null,
+            start_at: hongKongInputToIso(duplicateForm.start_at),
+            end_at: hongKongInputToIso(duplicateForm.end_at),
+            registration_deadline: hongKongInputToIso(
+              duplicateForm.registration_deadline
+            ),
+            location_name: duplicateForm.location_name || null,
+            location_address: duplicateForm.location_address || null,
+            map_url: duplicateForm.map_url || null,
+            price:
+              duplicateForm.price.trim() === ""
+                ? null
+                : Number(duplicateForm.price),
+            currency: duplicateForm.currency,
+            contact_name: duplicateForm.contact_name || null,
+            contact_url: duplicateForm.contact_url || null,
+
+            /*
+             * 副本一律先是草稿，避免舊活動複製後立即公開。
+             */
+            status: "draft",
+            is_featured: false,
+            sort_order: Number.parseInt(duplicateForm.sort_order, 10) || 0,
+
+            /*
+             * Cover 圖片稍後成功複製到新的 UUID 資料夾後才寫入。
+             */
+            cover_image_url: null,
+            updated_at: new Date().toISOString(),
+          })
+          .select("id")
+          .single();
+
+      if (activityCreateError || !createdActivity) {
+        throw new Error(activityCreateError?.message || "建立活動副本失敗。");
+      }
+
+      newActivityId = createdActivity.id;
+
+      setDataMessage(`正在複製「${activity.title}」的 Model、主題及服裝設定⋯`);
+
+      await saveRelations(newActivityId, duplicateForm);
+
+      let copiedCoverImageUrl = "";
+
+      if (activity.cover_image_url) {
+        setDataMessage(`正在複製「${activity.title}」的 Cover Image⋯`);
+
+        const copiedCover = await copyStorageImageToNewActivity(
+          activity.cover_image_url,
+          newActivityId,
+          "cover",
+          0
+        );
+
+        copiedCoverImageUrl = copiedCover.publicUrl;
+
+        if (copiedCover.createdStoragePath) {
+          createdStoragePaths.push(copiedCover.createdStoragePath);
+        }
+
+        const { error: coverUpdateError } = await supabase
+          .from("activities")
+          .update({
+            cover_image_url: copiedCoverImageUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", newActivityId);
+
+        if (coverUpdateError) {
+          throw new Error(`更新新活動 Cover Image 失敗：${coverUpdateError.message}`);
+        }
+      }
+
+      const copiedGalleryImages: ActivityImage[] = [];
+
+      for (let index = 0; index < sourceImages.length; index += 1) {
+        const sourceImage = sourceImages[index];
+
+        setDataMessage(
+          `正在複製圖片 ${index + 1} / ${sourceImages.length}：${activity.title}`
+        );
+
+        const copiedImage = await copyStorageImageToNewActivity(
+          sourceImage.image_url,
+          newActivityId,
+          "gallery",
+          index
+        );
+
+        if (copiedImage.createdStoragePath) {
+          createdStoragePaths.push(copiedImage.createdStoragePath);
+        }
+
+        const { data: createdImage, error: imageCreateError } = await supabase
+          .from("activity_images")
+          .insert({
+            activity_id: newActivityId,
+            image_url: copiedImage.publicUrl,
+            alt_text:
+              sourceImage.alt_text || `${duplicateTitle} 活動照片`,
+            sort_order: sourceImage.sort_order ?? index,
+          })
+          .select("id, activity_id, image_url, alt_text, sort_order")
+          .single();
+
+        if (imageCreateError || !createdImage) {
+          throw new Error(
+            imageCreateError?.message || `建立第 ${index + 1} 張相簿圖片資料失敗。`
+          );
+        }
+
+        copiedGalleryImages.push(createdImage as ActivityImage);
+      }
+
+      resetTemporaryUploads();
+
+      setForm({
+        ...duplicateForm,
+        id: newActivityId,
+        cover_image_url: copiedCoverImageUrl,
+        images: copiedGalleryImages,
+      });
+
+      setFormMessage(
+        `已建立「${duplicateTitle}」。請優先修改活動名稱、日期與時間，確認後再發布。`
+      );
+
+      setIsEditorOpen(true);
+
+      await loadAdminData();
+
+      setDataMessage(
+        `「${activity.title}」已複製為草稿，包含 ${
+          copiedGalleryImages.length
+        } 張 Gallery Images。`
+      );
+    } catch (error) {
+      console.error("Duplicate activity failed:", error);
+
+      if (newActivityId) {
+        await cleanupDuplicatedActivity(newActivityId, createdStoragePaths);
+      }
+
+      setDataMessage(
+        `複製失敗：${
+          error instanceof Error ? error.message : "未知錯誤"
+        }`
+      );
+    } finally {
+      setDuplicatingActivityId(null);
+    }
   }
 
   async function deleteActivity(activity: ActivityRow) {
@@ -1564,6 +1912,15 @@ export default function AdminPage() {
                         預覽 ↗
                       </Link>
                     )}
+
+                    <button
+                      className={styles.duplicateButton}
+                      type="button"
+                      onClick={() => duplicateActivity(activity)}
+                      disabled={duplicatingActivityId !== null}
+                    >
+                      {duplicatingActivityId === activity.id ? "複製中⋯" : "複製活動"}
+                    </button>
 
                     <button
                       className={styles.editButton}

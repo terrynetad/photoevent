@@ -648,15 +648,15 @@ export default function Home() {
           <a className="active" href="#top">
             首頁
           </a>
-          <a href="#events">活動列表</a>
+          <Link href="/events">活動列表</Link>
           <a href="#calendar">活動日曆</a>
           <a href="#models">Models</a>
           <a href="#categories">主題分類</a>
         </div>
 
-        <a className="nav-button" href="#events">
+        <Link className="nav-button" href="/events">
           探索活動 <span>→</span>
-        </a>
+        </Link>
       </nav>
 
       <section className="hero" id="top">
@@ -710,9 +710,9 @@ export default function Home() {
             </p>
           </div>
 
-          <a className="view-all" href="#calendar">
+          <Link className="view-all" href="/events">
             查看全部活動 <span>→</span>
-          </a>
+          </Link>
         </div>
 
         {loadError ? (
@@ -1124,9 +1124,9 @@ export default function Home() {
           輕鬆找到適合自己的影樓創作計劃。
         </p>
 
-        <a className="primary-button light-button" href="#events">
+        <Link className="primary-button light-button" href="/events">
           開始探索活動 <span>→</span>
-        </a>
+        </Link>
       </section>
 
       <footer>
