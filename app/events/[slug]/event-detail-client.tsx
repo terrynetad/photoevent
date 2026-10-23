@@ -95,8 +95,10 @@ function uniqueNames(values: string[]) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
-function isValidDate(value: string | null | undefined) {
-  if (!value) {
+function isValidDate(
+  value: string | null | undefined
+): value is string {
+  if (typeof value !== "string" || !value.trim()) {
     return false;
   }
 
