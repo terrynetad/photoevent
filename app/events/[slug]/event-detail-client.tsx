@@ -12,7 +12,9 @@ type EventDetailClientProps = {
 };
 
 type RelationModel = {
+  id: string;
   name: string | null;
+  slug: string | null;
 };
 
 type RelationTheme = {
@@ -23,11 +25,17 @@ type RelationOutfit = {
   name: string | null;
 };
 
+type ActivityImageModelRelation = {
+  model_id: string;
+  models: RelationModel | RelationModel[] | null;
+};
+
 type ActivityImage = {
   id?: string;
   image_url: string | null;
   alt_text: string | null;
   sort_order: number | null;
+  activity_image_models: ActivityImageModelRelation[] | null;
 };
 
 type ActivityModelRelation = {
@@ -61,10 +69,17 @@ type ActivityRow = {
   activity_outfits: ActivityOutfitRelation[] | null;
 };
 
+type ModelReference = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 type GalleryImage = {
   id: string;
   url: string;
   alt: string;
+  models: ModelReference[];
 };
 
 type EventDetail = {
@@ -77,7 +92,7 @@ type EventDetail = {
   locationName: string;
   locationAddress: string;
   price: string;
-  modelNames: string[];
+  models: ModelReference[];
   themeNames: string[];
   outfitNames: string[];
   galleryImages: GalleryImage[];
@@ -93,6 +108,50 @@ function ensureArray<T>(value: T | T[] | null | undefined): T[] {
 
 function uniqueNames(values: string[]) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function uniqueModels(values: ModelReference[]) {
+  const usedIds = new Set<string>();
+  const usedSlugs = new Set<string>();
+
+  return values.filter((model) => {
+    const cleanId = model.id.trim();
+    const cleanSlug = model.slug.trim();
+    const cleanName = model.name.trim();
+
+    if (!cleanId || !cleanSlug || !cleanName) {
+      return false;
+    }
+
+    if (usedIds.has(cleanId) || usedSlugs.has(cleanSlug)) {
+      return false;
+    }
+
+    usedIds.add(cleanId);
+    usedSlugs.add(cleanSlug);
+
+    return true;
+  });
+}
+
+function getModelsFromRelations(
+  relations:
+    | ActivityModelRelation[]
+    | ActivityImageModelRelation[]
+    | null
+    | undefined
+): ModelReference[] {
+  return uniqueModels(
+    (relations || []).flatMap((relation) =>
+      ensureArray(relation.models)
+        .map((model) => ({
+          id: model.id?.trim() || "",
+          name: model.name?.trim() || "",
+          slug: model.slug?.trim() || "",
+        }))
+        .filter((model) => model.id && model.name && model.slug)
+    )
+  );
 }
 
 function isValidDate(
@@ -188,7 +247,7 @@ function buildGalleryImages(activity: ActivityRow): GalleryImage[] {
     (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
   );
 
-  const rawImages = [
+  const rawImages: ActivityImage[] = [
     ...(activity.cover_image_url?.trim()
       ? [
           {
@@ -196,6 +255,7 @@ function buildGalleryImages(activity: ActivityRow): GalleryImage[] {
             image_url: activity.cover_image_url,
             alt_text: `${activity.title || "活動"}封面照片`,
             sort_order: -1,
+            activity_image_models: [],
           },
         ]
       : []),
@@ -219,6 +279,7 @@ function buildGalleryImages(activity: ActivityRow): GalleryImage[] {
       alt:
         image.alt_text?.trim() ||
         `${activity.title || "活動"} 活動照片 ${images.length + 1}`,
+      models: getModelsFromRelations(image.activity_image_models),
     });
 
     return images;
@@ -283,12 +344,22 @@ export default function EventDetailClient({
                 id,
                 image_url,
                 alt_text,
-                sort_order
+                sort_order,
+                activity_image_models (
+                  model_id,
+                  models (
+                    id,
+                    name,
+                    slug
+                  )
+                )
               ),
               activity_models (
                 sort_order,
                 models (
-                  name
+                  id,
+                  name,
+                  slug
                 )
               ),
               activity_themes (
@@ -321,13 +392,7 @@ export default function EventDetailClient({
           (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
         );
 
-        const modelNames = uniqueNames(
-          sortedModelRelations.flatMap((relation) =>
-            ensureArray(relation.models)
-              .map((model) => model.name?.trim() || "")
-              .filter(Boolean)
-          )
-        );
+        const activityModels = getModelsFromRelations(sortedModelRelations);
 
         const themeNames = uniqueNames(
           (activity.activity_themes ?? []).flatMap((relation) =>
@@ -355,7 +420,7 @@ export default function EventDetailClient({
           locationName: activity.location_name?.trim() || "地點待公布",
           locationAddress: activity.location_address?.trim() || "",
           price: formatPrice(activity.price, activity.currency),
-          modelNames,
+          models: activityModels,
           themeNames,
           outfitNames,
           galleryImages: buildGalleryImages(activity),
@@ -516,7 +581,7 @@ export default function EventDetailClient({
               <div>
                 <p className={styles.eyebrow}>GALLERY</p>
                 <h2>活動照片</h2>
-                <p>點擊照片可放大查看。</p>
+                <p>點擊照片可放大查看；照片下方會顯示圖中 Model。</p>
               </div>
 
               {visibleGalleryImages.length > 0 && (
@@ -529,26 +594,45 @@ export default function EventDetailClient({
             {visibleGalleryImages.length > 0 ? (
               <div className={styles.galleryGrid}>
                 {visibleGalleryImages.map((image, index) => (
-                  <button
-                    className={styles.galleryButton}
-                    type="button"
-                    key={image.id}
-                    onClick={() => setSelectedImage(image)}
-                    aria-label={`放大查看：${image.alt}`}
-                  >
-                    <img
-                      className={styles.galleryImage}
-                      src={image.url}
-                      alt={image.alt}
-                      loading={index === 0 ? "eager" : "lazy"}
-                      onError={() => markImageAsFailed(image.id)}
-                    />
+                  <article className={styles.galleryCard} key={image.id}>
+                    <button
+                      className={styles.galleryButton}
+                      type="button"
+                      onClick={() => setSelectedImage(image)}
+                      aria-label={`放大查看：${image.alt}`}
+                    >
+                      <img
+                        className={styles.galleryImage}
+                        src={image.url}
+                        alt={image.alt}
+                        loading={index === 0 ? "eager" : "lazy"}
+                        onError={() => markImageAsFailed(image.id)}
+                      />
 
-                    <span className={styles.galleryOverlay} aria-hidden="true">
-                      <span className={styles.zoomIcon}>⤢</span>
-                      <span>點擊放大</span>
-                    </span>
-                  </button>
+                      <span className={styles.galleryOverlay} aria-hidden="true">
+                        <span className={styles.zoomIcon}>⤢</span>
+                        <span>點擊放大</span>
+                      </span>
+                    </button>
+
+                    {image.models.length > 0 && (
+                      <div className={styles.galleryModelTags}>
+                        <span>圖中 Model</span>
+
+                        <div>
+                          {image.models.map((model) => (
+                            <Link
+                              className={styles.photoModelLink}
+                              href={`/models/${model.slug}`}
+                              key={`${image.id}-${model.id}`}
+                            >
+                              {model.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </article>
                 ))}
               </div>
             ) : event.galleryImages.length > 0 ? (
@@ -599,20 +683,26 @@ export default function EventDetailClient({
             </dl>
           </section>
 
-          {(event.modelNames.length > 0 ||
+          {(event.models.length > 0 ||
             event.themeNames.length > 0 ||
             event.outfitNames.length > 0) && (
             <section className={styles.infoCard}>
               <p className={styles.eyebrow}>CREATIVE DETAILS</p>
               <h2>拍攝企劃</h2>
 
-              {event.modelNames.length > 0 && (
+              {event.models.length > 0 && (
                 <div className={styles.tagGroup}>
                   <span>MODELS</span>
 
                   <div>
-                    {event.modelNames.map((name) => (
-                      <em key={`model-${name}`}>{name}</em>
+                    {event.models.map((model) => (
+                      <Link
+                        className={styles.modelTagLink}
+                        href={`/models/${model.slug}`}
+                        key={model.id}
+                      >
+                        {model.name}
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -715,7 +805,26 @@ export default function EventDetailClient({
               }}
             />
 
-            <p className={styles.lightboxCaption}>{selectedImage.alt}</p>
+            <div className={styles.lightboxDetails}>
+              <p className={styles.lightboxCaption}>{selectedImage.alt}</p>
+
+              {selectedImage.models.length > 0 && (
+                <div className={styles.lightboxModelTags}>
+                  <span>圖中 Model</span>
+
+                  <div>
+                    {selectedImage.models.map((model) => (
+                      <Link
+                        href={`/models/${model.slug}`}
+                        key={`lightbox-${selectedImage.id}-${model.id}`}
+                      >
+                        {model.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

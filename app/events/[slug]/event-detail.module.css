@@ -321,16 +321,25 @@
 .galleryGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 20px 16px;
+}
+
+.galleryCard {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--detail-line-dark);
+  background: #ffffff;
 }
 
 .galleryButton {
   position: relative;
   display: block;
+  width: 100%;
   min-height: 285px;
   padding: 0;
   overflow: hidden;
-  border: 1px solid var(--detail-line-dark);
+  border: 0;
+  border-bottom: 1px solid var(--detail-line);
   background: #ebe8e1;
   cursor: zoom-in;
 }
@@ -408,7 +417,75 @@
 
 .galleryButton:focus-visible {
   outline: 3px solid var(--detail-gold-light);
-  outline-offset: 4px;
+  outline-offset: -3px;
+}
+
+/* 每張照片所屬 Model */
+
+.galleryModelTags {
+  padding: 13px 14px 15px;
+  background: #ffffff;
+}
+
+.galleryModelTags > span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--detail-gold);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.galleryModelTags > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.photoModelLink,
+.modelTagLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 27px;
+  padding: 5px 9px;
+  border: 1px solid rgb(155 111 44 / 35%);
+  color: #765221;
+  background: #faf2e5;
+  font-size: 12px;
+  line-height: 1.2;
+  text-decoration: none;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.photoModelLink::before,
+.modelTagLink::before {
+  margin-right: 5px;
+  color: var(--detail-gold);
+  content: "●";
+  font-size: 7px;
+}
+
+.photoModelLink:hover,
+.modelTagLink:hover {
+  border-color: var(--detail-gold);
+  color: #ffffff;
+  background: var(--detail-gold);
+  transform: translateY(-1px);
+}
+
+.photoModelLink:hover::before,
+.modelTagLink:hover::before {
+  color: #ffffff;
+}
+
+.photoModelLink:focus-visible,
+.modelTagLink:focus-visible {
+  outline: 2px solid var(--detail-gold-light);
+  outline-offset: 2px;
 }
 
 .galleryEmpty {
@@ -549,8 +626,8 @@
 }
 
 .listButton:hover {
-  color: #171512;
   border-color: #171512;
+  color: #171512;
 }
 
 /* =========================================================
@@ -710,6 +787,7 @@
 .lightboxContent {
   position: relative;
   display: flex;
+  width: fit-content;
   max-width: min(1200px, 100%);
   max-height: calc(100vh - 60px);
   flex-direction: column;
@@ -720,7 +798,7 @@
 .lightboxImage {
   display: block;
   max-width: 100%;
-  max-height: calc(100vh - 126px);
+  max-height: calc(100vh - 195px);
   object-fit: contain;
   background: #171612;
   box-shadow: 0 24px 72px rgb(0 0 0 / 58%);
@@ -730,7 +808,7 @@
   position: absolute;
   top: -14px;
   right: -14px;
-  z-index: 2;
+  z-index: 3;
   display: grid;
   width: 40px;
   height: 40px;
@@ -756,13 +834,80 @@
   transform: rotate(90deg);
 }
 
-.lightboxCaption {
+.lightboxDetails {
   width: 100%;
-  margin: 12px 0 0;
+  padding: 12px 14px 14px;
+  background: #171612;
+}
+
+.lightboxCaption {
+  margin: 0;
   color: #dfd9cf;
   font-size: 13px;
   line-height: 1.5;
   text-align: center;
+}
+
+.lightboxModelTags {
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid rgb(255 255 255 / 14%);
+  text-align: center;
+}
+
+.lightboxModelTags > span {
+  display: block;
+  margin-bottom: 8px;
+  color: #eed09d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.lightboxModelTags > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+}
+
+.lightboxModelTags a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 27px;
+  padding: 5px 9px;
+  border: 1px solid rgb(238 208 157 / 55%);
+  color: #f5deb4;
+  background: rgb(238 208 157 / 10%);
+  font-size: 12px;
+  line-height: 1.2;
+  text-decoration: none;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.lightboxModelTags a::before {
+  margin-right: 5px;
+  content: "●";
+  color: #eed09d;
+  font-size: 7px;
+}
+
+.lightboxModelTags a:hover {
+  color: #171512;
+  background: #eed09d;
+  transform: translateY(-1px);
+}
+
+.lightboxModelTags a:hover::before {
+  color: #171512;
+}
+
+.lightboxModelTags a:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
 }
 
 /* =========================================================
@@ -844,7 +989,7 @@
 
   .galleryGrid {
     grid-template-columns: 1fr;
-    gap: 13px;
+    gap: 16px;
   }
 
   .galleryButton,
@@ -860,6 +1005,10 @@
 
   .galleryButton::before {
     opacity: 1;
+  }
+
+  .galleryModelTags {
+    padding: 12px 13px 14px;
   }
 
   .sideColumn {
@@ -893,7 +1042,7 @@
   }
 
   .lightboxImage {
-    max-height: calc(100vh - 104px);
+    max-height: calc(100vh - 190px);
   }
 
   .lightboxClose {
@@ -904,8 +1053,16 @@
     font-size: 27px;
   }
 
+  .lightboxDetails {
+    padding: 11px 11px 12px;
+  }
+
   .lightboxCaption {
-    margin-top: 10px;
     font-size: 12px;
+  }
+
+  .lightboxModelTags {
+    margin-top: 10px;
+    padding-top: 10px;
   }
 }

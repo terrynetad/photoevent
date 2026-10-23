@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { getModelImage } from "@/lib/model-image";
 
 const HONG_KONG_TIME_ZONE = "Asia/Hong_Kong";
 
@@ -12,12 +13,12 @@ const FALLBACK_EVENT_IMAGES = [
   "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=85",
 ];
 
-const FALLBACK_MODEL_IMAGES = [
-  "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=85",
-  "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85",
-  "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=85",
-  "https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&w=900&q=85",
-];
+//const FALLBACK_MODEL_IMAGES = [
+ // "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=85",
+ // "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85",
+ // "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=85",
+ // "https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&w=900&q=85",
+//];
 
 const CATEGORY_ICONS = ["◐", "✦", "◒", "◈", "◑", "☾"];
 
@@ -107,6 +108,7 @@ type EventView = {
 type ModelView = {
   id: string;
   name: string;
+  slug: string;
   englishName: string;
   style: string;
   image: string;
@@ -217,6 +219,22 @@ function getEnglishName(name: string) {
   }
 
   return name.slice(0, 2).toUpperCase();
+}
+
+function getModelInitial(name: string) {
+  const trimmedName = name.trim();
+
+  if (!trimmedName) {
+    return "M";
+  }
+
+  const englishOnly = trimmedName.replace(/[^\u0000-\u007f]/g, "").trim();
+
+  if (englishOnly) {
+    return englishOnly.slice(0, 1).toUpperCase();
+  }
+
+  return trimmedName.slice(0, 1).toUpperCase();
 }
 
 function toHongKongDateKey(value: string) {
@@ -432,15 +450,19 @@ export default function Home() {
         const displayEvents =
           futureEvents.length > 0 ? futureEvents : mappedEvents;
 
-        const mappedModels = modelRows.map((model, index): ModelView => ({
-          id: model.id,
-          name: model.name,
-          englishName: getEnglishName(model.name),
-          style: model.bio?.trim() || "攝影活動 Model",
-          image:
-            model.avatar_url?.trim() ||
-            FALLBACK_MODEL_IMAGES[index % FALLBACK_MODEL_IMAGES.length],
-        }));
+        const mappedModels = modelRows
+          .filter((model) => Boolean(model.slug?.trim()))
+          .map((model): ModelView => ({
+            id: model.id,
+            name: model.name,
+            slug: model.slug.trim(),
+            englishName: getEnglishName(model.name),
+            style: model.bio?.trim() || "攝影活動 Model",
+            image: getModelImage(
+              model.avatar_url,
+              model.slug?.trim() || model.id
+            ),
+          }));
 
         const categoryCountMap = new Map<string, number>();
 
@@ -650,7 +672,7 @@ export default function Home() {
           </a>
           <Link href="/events">活動列表</Link>
           <a href="#calendar">活動日曆</a>
-          <a href="#models">Models</a>
+          <Link href="/models">Models</Link>
           <a href="#categories">主題分類</a>
         </div>
 
@@ -1045,9 +1067,9 @@ export default function Home() {
             </p>
           </div>
 
-          <a className="view-all" href="#models">
+          <Link className="view-all" href="/models">
             查看所有 Models <span>→</span>
-          </a>
+          </Link>
         </div>
 
         {isLoading ? (
@@ -1056,25 +1078,41 @@ export default function Home() {
           </div>
         ) : visibleModels.length === 0 ? (
           <div className="data-state">
-            <strong>暫時沒有啟用中的 Model</strong>
-            <p>請於 Supabase 的 models 資料表將 is_active 設為 true。</p>
+            <strong>暫時沒有可公開顯示的 Model</strong>
+            <p>
+              請確認 models 資料表的 is_active 為 true，且每位 Model 已設定 slug。
+            </p>
           </div>
         ) : (
           <div className="model-grid">
-            {visibleModels.map((model) => (
-              <article className="model-card" key={model.id}>
-                <div
-                  className="model-image"
-                  style={{ backgroundImage: `url("${model.image}")` }}
-                />
+            {visibleModels.map((model) => {
+              const hasAvatar = Boolean(model.avatarUrl);
 
-                <div className="model-overlay">
-                  <p>{model.englishName}</p>
-                  <h3>{model.name}</h3>
-                  <span>{model.style}</span>
-                </div>
-              </article>
-            ))}
+              return (
+                <Link
+                  className="model-card model-card-link"
+                  href={`/models/${model.slug}`}
+                  key={model.id}
+                  aria-label={`查看 ${model.name} 的個人頁`}
+                >
+                  <img
+                    className="model-image"
+                    src={model.image}
+                    alt={`${model.name} Model 相片`}
+                    onError={(event) => {
+                      event.currentTarget.src = "/images/models/image1.jpeg";
+                    }}
+                  />
+
+                  <div className="model-overlay">
+                    <p>{model.englishName}</p>
+                    <h3>{model.name}</h3>
+                    <span>{model.style}</span>
+                    <small>查看個人頁 →</small>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>

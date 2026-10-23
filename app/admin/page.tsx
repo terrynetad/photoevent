@@ -19,14 +19,6 @@ type BasicOption = {
   sort_order?: number;
 };
 
-type ActivityImage = {
-  id: string;
-  activity_id: string;
-  image_url: string;
-  alt_text: string | null;
-  sort_order: number;
-};
-
 type RelationModel = {
   id: string;
   name: string;
@@ -43,6 +35,24 @@ type RelationOutfit = {
   id: string;
   name: string;
   slug: string;
+};
+
+type ActivityImageModelRelation = {
+  model_id: string;
+  models: RelationModel | RelationModel[] | null;
+};
+
+type ActivityImage = {
+  id: string;
+  activity_id: string;
+  image_url: string;
+  alt_text: string | null;
+  sort_order: number;
+  activity_image_models?: ActivityImageModelRelation[] | null;
+};
+
+type FormActivityImage = ActivityImage & {
+  modelIds: string[];
 };
 
 type ActivityModelRelation = {
@@ -112,7 +122,7 @@ type FormState = {
   themeIds: string[];
   outfitIds: string[];
   cover_image_url: string;
-  images: ActivityImage[];
+  images: FormActivityImage[];
 };
 
 const EMPTY_FORM: FormState = {
@@ -178,11 +188,6 @@ function createUniqueId() {
     return globalThis.crypto.randomUUID();
   }
 
-  /*
-   * HTTP + 內網 IP（例如 http://192.168.x.x:3000）通常不是 Secure Context，
-   * 因此某些瀏覽器不提供 crypto.randomUUID()。
-   * 此 fallback 用於生成 Storage 檔名的唯一識別碼。
-   */
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
     /[xy]/g,
     (character) => {
@@ -318,6 +323,12 @@ function getRelationNames<T extends { name: string }>(
   return (relations || []).map((item) => item.name).filter(Boolean);
 }
 
+function getImageModelIds(image: ActivityImage): string[] {
+  return [...(image.activity_image_models || [])]
+    .map((relation) => relation.model_id)
+    .filter(Boolean);
+}
+
 export default function AdminPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -342,8 +353,10 @@ export default function AdminPage() {
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formMessage, setFormMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  
-  const [duplicatingActivityId, setDuplicatingActivityId] = useState<string | null>(null);
+
+  const [duplicatingActivityId, setDuplicatingActivityId] = useState<
+    string | null
+  >(null);
 
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState("");
@@ -356,12 +369,12 @@ export default function AdminPage() {
   const [creatingLookup, setCreatingLookup] = useState("");
 
   useEffect(() => {
-    checkAdminAccess();
+    void checkAdminAccess();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(() => {
-      checkAdminAccess();
+      void checkAdminAccess();
     });
 
     return () => {
@@ -454,7 +467,15 @@ export default function AdminPage() {
                 activity_id,
                 image_url,
                 alt_text,
-                sort_order
+                sort_order,
+                activity_image_models (
+                  model_id,
+                  models (
+                    id,
+                    name,
+                    slug
+                  )
+                )
               ),
               activity_models (
                 model_id,
@@ -569,9 +590,14 @@ export default function AdminPage() {
   function openEditActivityEditor(activity: ActivityRow) {
     resetTemporaryUploads();
 
-    const imageList = [...(activity.activity_images || [])].sort(
-      (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
-    );
+    const imageList: FormActivityImage[] = [
+      ...(activity.activity_images || []),
+    ]
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+      .map((image) => ({
+        ...image,
+        modelIds: getImageModelIds(image),
+      }));
 
     const selectedModelIds = [...(activity.activity_models || [])]
       .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -682,6 +708,24 @@ export default function AdminPage() {
     });
   }
 
+  function toggleImageModel(imageId: string, modelId: string) {
+    setForm((current) => ({
+      ...current,
+      images: current.images.map((image) => {
+        if (image.id !== imageId) {
+          return image;
+        }
+
+        return {
+          ...image,
+          modelIds: image.modelIds.includes(modelId)
+            ? image.modelIds.filter((item) => item !== modelId)
+            : [...image.modelIds, modelId],
+        };
+      }),
+    }));
+  }
+
   function handleCoverFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selectedFile = event.target.files?.[0];
 
@@ -736,7 +780,9 @@ export default function AdminPage() {
   }
 
   function removeQueuedGalleryImage(index: number) {
-    setGalleryFiles((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setGalleryFiles((current) =>
+      current.filter((_, itemIndex) => itemIndex !== index)
+    );
 
     setGalleryPreviewUrls((current) => {
       const url = current[index];
@@ -753,63 +799,63 @@ export default function AdminPage() {
     activityId: string,
     folder: "cover" | "gallery",
     file: File
-    ): Promise<{
+  ): Promise<{
     storagePath: string;
     publicUrl: string;
-    }> {
+  }> {
     const extension = getFileExtension(file);
     const originalName = escapeFileName(file.name.replace(/\.[^/.]+$/, ""));
     const fileName = `${Date.now()}-${createUniqueId()}-${originalName}.${extension}`;
     const storagePath = `${activityId}/${folder}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(storagePath, file, {
+      .from(STORAGE_BUCKET)
+      .upload(storagePath, file, {
         cacheControl: "3600",
         upsert: false,
         contentType: file.type,
-        });
+      });
 
     if (uploadError) {
-        throw new Error(uploadError.message);
+      throw new Error(uploadError.message);
     }
 
     const { data: publicUrlData } = supabase.storage
-        .from(STORAGE_BUCKET)
-        .getPublicUrl(storagePath);
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(storagePath);
 
     const publicUrl = publicUrlData?.publicUrl;
 
     if (!publicUrl) {
-        await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+      await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
 
-        throw new Error("圖片已上傳，但無法取得 Supabase Storage 公開網址。");
+      throw new Error("圖片已上傳，但無法取得 Supabase Storage 公開網址。");
     }
 
     return {
-        storagePath,
-        publicUrl,
+      storagePath,
+      publicUrl,
     };
-    }
+  }
 
   async function removeStorageImage(
     publicUrl: string | null | undefined
-    ): Promise<void> {
+  ): Promise<void> {
     const storagePath = getStoragePathFromPublicUrl(publicUrl);
 
     if (!storagePath) {
-        return;
+      return;
     }
 
     const { error } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .remove([storagePath]);
+      .from(STORAGE_BUCKET)
+      .remove([storagePath]);
 
     if (error) {
-        console.warn("Storage image removal failed:", error.message);
+      console.warn("Storage image removal failed:", error.message);
     }
-    }
-  
+  }
+
   function getStorageFileExtension(storagePath: string) {
     const fileName = storagePath.split("/").pop() || "";
     const extension = fileName.split(".").pop()?.toLowerCase();
@@ -835,11 +881,6 @@ export default function AdminPage() {
 
     const sourceStoragePath = getStoragePathFromPublicUrl(sourceUrl);
 
-    /*
-     * 如果不是本系統 activity-images bucket 的 URL，例如外部圖片網址，
-     * 不需要複製 Storage 檔案，也不會被 deleteActivity() 刪除。
-     * 因此直接保留該外部 URL。
-     */
     if (!sourceStoragePath) {
       return {
         publicUrl: sourceUrl,
@@ -876,10 +917,42 @@ export default function AdminPage() {
     };
   }
 
+  async function deleteImageModelRelationsByActivityId(activityId: string) {
+    const { data: imageRows, error: imageLoadError } = await supabase
+      .from("activity_images")
+      .select("id")
+      .eq("activity_id", activityId);
+
+    if (imageLoadError) {
+      throw new Error(`讀取活動圖片失敗：${imageLoadError.message}`);
+    }
+
+    const imageIds = (imageRows || []).map((image) => image.id).filter(Boolean);
+
+    if (imageIds.length === 0) {
+      return;
+    }
+
+    const { error: relationDeleteError } = await supabase
+      .from("activity_image_models")
+      .delete()
+      .in("activity_image_id", imageIds);
+
+    if (relationDeleteError) {
+      throw new Error(`刪除圖片 Model 關聯失敗：${relationDeleteError.message}`);
+    }
+  }
+
   async function cleanupDuplicatedActivity(
     activityId: string,
     storagePaths: string[]
   ) {
+    try {
+      await deleteImageModelRelationsByActivityId(activityId);
+    } catch (error) {
+      console.warn("Cleanup image-model relations failed:", error);
+    }
+
     await Promise.all([
       supabase.from("activity_models").delete().eq("activity_id", activityId),
       supabase.from("activity_themes").delete().eq("activity_id", activityId),
@@ -967,6 +1040,40 @@ export default function AdminPage() {
     }
   }
 
+  async function saveImageModelRelations(images: FormActivityImage[]) {
+    for (const image of images) {
+      const { error: deleteError } = await supabase
+        .from("activity_image_models")
+        .delete()
+        .eq("activity_image_id", image.id);
+
+      if (deleteError) {
+        throw new Error(
+          `清除圖片 Model 關聯失敗：${deleteError.message}`
+        );
+      }
+
+      if (image.modelIds.length === 0) {
+        continue;
+      }
+
+      const { error: insertError } = await supabase
+        .from("activity_image_models")
+        .insert(
+          image.modelIds.map((modelId) => ({
+            activity_image_id: image.id,
+            model_id: modelId,
+          }))
+        );
+
+      if (insertError) {
+        throw new Error(
+          `儲存圖片 Model 關聯失敗：${insertError.message}`
+        );
+      }
+    }
+  }
+
   async function handleSaveActivity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -1004,7 +1111,10 @@ export default function AdminPage() {
 
     const numericPrice = form.price.trim() === "" ? null : Number(form.price);
 
-    if (numericPrice !== null && (Number.isNaN(numericPrice) || numericPrice < 0)) {
+    if (
+      numericPrice !== null &&
+      (Number.isNaN(numericPrice) || numericPrice < 0)
+    ) {
       setFormMessage("活動費用必須是 0 或正數。");
       return;
     }
@@ -1067,17 +1177,16 @@ export default function AdminPage() {
         oldCoverImageUrl = "";
       }
 
-      /*
-       * TypeScript 防呆：
-       * form.id 在建立新活動前可能是 null。
-       * 即使上方 insert 已回傳 data.id，也要明確確認，
-       * 後續 saveRelations / Storage upload / update 才能使用 UUID。
-       */
       if (!activityId) {
         throw new Error("活動儲存失敗：未能取得 activity ID。");
       }
 
       await saveRelations(activityId, form);
+
+      if (form.images.length > 0) {
+        setFormMessage("正在同步每張活動圖片的 Model 標記⋯");
+        await saveImageModelRelations(form.images);
+      }
 
       let nextCoverImageUrl = oldCoverImageUrl;
 
@@ -1102,7 +1211,7 @@ export default function AdminPage() {
         nextCoverImageUrl = uploadedCover.publicUrl;
 
         if (oldCoverImageUrl && oldCoverImageUrl !== uploadedCover.publicUrl) {
-          await removeStorageImage(oldCoverImageUrl ?? "");
+          await removeStorageImage(oldCoverImageUrl);
         }
       }
 
@@ -1125,7 +1234,7 @@ export default function AdminPage() {
             });
 
           if (imageInsertError) {
-            await removeStorageImage(uploadedImage.publicUrl ?? "");
+            await removeStorageImage(uploadedImage.publicUrl);
             throw new Error(`寫入相簿資料失敗：${imageInsertError.message}`);
           }
         }
@@ -1135,11 +1244,21 @@ export default function AdminPage() {
 
       resetTemporaryUploads();
 
+      const updatedActivity = activities.find((activity) => activity.id === activityId);
+
       setForm((current) => ({
         ...current,
         id: activityId,
         slug: cleanSlug,
         cover_image_url: nextCoverImageUrl,
+        images: updatedActivity
+          ? [...(updatedActivity.activity_images || [])]
+              .sort((a, b) => a.sort_order - b.sort_order)
+              .map((image) => ({
+                ...image,
+                modelIds: getImageModelIds(image),
+              }))
+          : current.images,
       }));
 
       setFormMessage(
@@ -1158,14 +1277,26 @@ export default function AdminPage() {
     }
   }
 
-  async function deleteGalleryImage(image: ActivityImage) {
-    const confirmed = window.confirm("確定刪除這張 Gallery Image？此操作不能復原。");
+  async function deleteGalleryImage(image: FormActivityImage) {
+    const confirmed = window.confirm(
+      "確定刪除這張 Gallery Image？圖片與圖中 Model 關聯都會一併移除，此操作不能復原。"
+    );
 
     if (!confirmed) {
       return;
     }
 
-    setFormMessage("正在刪除圖片⋯");
+    setFormMessage("正在刪除圖片及其 Model 關聯⋯");
+
+    const { error: relationDeleteError } = await supabase
+      .from("activity_image_models")
+      .delete()
+      .eq("activity_image_id", image.id);
+
+    if (relationDeleteError) {
+      setFormMessage(`刪除圖片 Model 關聯失敗：${relationDeleteError.message}`);
+      return;
+    }
 
     const { error: databaseError } = await supabase
       .from("activity_images")
@@ -1177,7 +1308,7 @@ export default function AdminPage() {
       return;
     }
 
-    await removeStorageImage(image.image_url ?? "");
+    await removeStorageImage(image.image_url);
 
     setForm((current) => ({
       ...current,
@@ -1185,29 +1316,20 @@ export default function AdminPage() {
     }));
 
     await loadAdminData();
-    setFormMessage("圖片已刪除。");
+    setFormMessage("圖片及其圖中 Model 標記已刪除。");
   }
 
   async function duplicateActivity(activity: ActivityRow) {
     const confirmed = window.confirm(
-      `確定複製「${activity.title}」？\n\n系統會建立一個新的草稿活動，並實體複製 Cover Image、Gallery Images、Model、主題及服裝關聯。\n\n新副本不會立即公開。`
+      `確定複製「${activity.title}」？\n\n系統會建立一個新的草稿活動，並實體複製 Cover Image、Gallery Images、每張照片的 Model、活動 Model、主題及服裝關聯。\n\n新副本不會立即公開。`
     );
 
     if (!confirmed) {
       return;
     }
 
-   const duplicateTitle = `${activity.title}（副本）`;
+    const duplicateTitle = `${activity.title}（副本）`;
 
-    /*
-    * 原活動 slug 已通過 activities_slug_format 資料庫限制，
-    * 副本直接沿用原 slug，再附加純英文、數字與連字號的唯一尾碼。
-    *
-    * 範例：
-    * yuki-autumn-uniform-outdoor-2026-12-06
-    * ↓
-    * yuki-autumn-uniform-outdoor-2026-12-06-copy-1760000000000
-    */
     const sourceSlug = (activity.slug || "activity")
       .toLowerCase()
       .replace(/[^a-z0-9-]+/g, "-")
@@ -1287,17 +1409,9 @@ export default function AdminPage() {
             currency: duplicateForm.currency,
             contact_name: duplicateForm.contact_name || null,
             contact_url: duplicateForm.contact_url || null,
-
-            /*
-             * 副本一律先是草稿，避免舊活動複製後立即公開。
-             */
             status: "draft",
             is_featured: false,
             sort_order: Number.parseInt(duplicateForm.sort_order, 10) || 0,
-
-            /*
-             * Cover 圖片稍後成功複製到新的 UUID 資料夾後才寫入。
-             */
             cover_image_url: null,
             updated_at: new Date().toISOString(),
           })
@@ -1345,7 +1459,7 @@ export default function AdminPage() {
         }
       }
 
-      const copiedGalleryImages: ActivityImage[] = [];
+      const copiedGalleryImages: FormActivityImage[] = [];
 
       for (let index = 0; index < sourceImages.length; index += 1) {
         const sourceImage = sourceImages[index];
@@ -1379,11 +1493,35 @@ export default function AdminPage() {
 
         if (imageCreateError || !createdImage) {
           throw new Error(
-            imageCreateError?.message || `建立第 ${index + 1} 張相簿圖片資料失敗。`
+            imageCreateError?.message ||
+              `建立第 ${index + 1} 張相簿圖片資料失敗。`
           );
         }
 
-        copiedGalleryImages.push(createdImage as ActivityImage);
+        const sourceImageModelIds = getImageModelIds(sourceImage);
+
+        if (sourceImageModelIds.length > 0) {
+          const { error: imageModelInsertError } = await supabase
+            .from("activity_image_models")
+            .insert(
+              sourceImageModelIds.map((modelId) => ({
+                activity_image_id: createdImage.id,
+                model_id: modelId,
+              }))
+            );
+
+          if (imageModelInsertError) {
+            throw new Error(
+              `複製第 ${index + 1} 張圖片的 Model 關聯失敗：${imageModelInsertError.message}`
+            );
+          }
+        }
+
+        copiedGalleryImages.push({
+          ...(createdImage as ActivityImage),
+          activity_image_models: [],
+          modelIds: sourceImageModelIds,
+        });
       }
 
       resetTemporaryUploads();
@@ -1404,9 +1542,7 @@ export default function AdminPage() {
       await loadAdminData();
 
       setDataMessage(
-        `「${activity.title}」已複製為草稿，包含 ${
-          copiedGalleryImages.length
-        } 張 Gallery Images。`
+        `「${activity.title}」已複製為草稿，包含 ${copiedGalleryImages.length} 張 Gallery Images 及其圖中 Model 標記。`
       );
     } catch (error) {
       console.error("Duplicate activity failed:", error);
@@ -1427,7 +1563,7 @@ export default function AdminPage() {
 
   async function deleteActivity(activity: ActivityRow) {
     const confirmed = window.confirm(
-      `確定永久刪除「${activity.title}」？\n\n活動資料、關聯標籤與已上傳圖片都會被移除，此操作不能復原。`
+      `確定永久刪除「${activity.title}」？\n\n活動資料、關聯標籤、每張圖片的 Model 關聯與已上傳圖片都會被移除，此操作不能復原。`
     );
 
     if (!confirmed) {
@@ -1442,6 +1578,8 @@ export default function AdminPage() {
         activity.cover_image_url,
         ...activityImages.map((image) => image.image_url),
       ].filter((url): url is string => Boolean(url));
+
+      await deleteImageModelRelationsByActivityId(activity.id);
 
       const relationDeleteResults = await Promise.all([
         supabase.from("activity_models").delete().eq("activity_id", activity.id),
@@ -1467,9 +1605,7 @@ export default function AdminPage() {
         throw new Error(activityDeleteError.message);
       }
 
-      await Promise.all(
-        storageUrls.map((url) => removeStorageImage(url ?? ""))
-        );
+      await Promise.all(storageUrls.map((url) => removeStorageImage(url)));
 
       if (form.id === activity.id) {
         closeEditor();
@@ -1500,7 +1636,11 @@ export default function AdminPage() {
     }
 
     const lookupLabel =
-      table === "models" ? "Model" : table === "themes" ? "拍攝主題" : "服裝風格";
+      table === "models"
+        ? "Model"
+        : table === "themes"
+        ? "拍攝主題"
+        : "服裝風格";
 
     setCreatingLookup(table);
 
@@ -1916,10 +2056,12 @@ export default function AdminPage() {
                     <button
                       className={styles.duplicateButton}
                       type="button"
-                      onClick={() => duplicateActivity(activity)}
+                      onClick={() => void duplicateActivity(activity)}
                       disabled={duplicatingActivityId !== null}
                     >
-                      {duplicatingActivityId === activity.id ? "複製中⋯" : "複製活動"}
+                      {duplicatingActivityId === activity.id
+                        ? "複製中⋯"
+                        : "複製活動"}
                     </button>
 
                     <button
@@ -1933,7 +2075,7 @@ export default function AdminPage() {
                     <button
                       className={styles.deleteButton}
                       type="button"
-                      onClick={() => deleteActivity(activity)}
+                      onClick={() => void deleteActivity(activity)}
                     >
                       刪除
                     </button>
@@ -2270,7 +2412,9 @@ export default function AdminPage() {
 
                     <label className={styles.galleryDropZone}>
                       <strong>＋ 選擇多張相簿圖片</strong>
-                      <small>可一次選擇多張，儲存活動時會上傳至 Supabase Storage。</small>
+                      <small>
+                        可一次選擇多張，儲存活動時會上傳至 Supabase Storage。
+                      </small>
                       <input
                         type="file"
                         accept="image/*"
@@ -2284,11 +2428,14 @@ export default function AdminPage() {
                       <div className={styles.galleryGrid}>
                         {form.images.map((image) => (
                           <div className={styles.galleryItem} key={image.id}>
-                            <img src={image.image_url} alt={image.alt_text || "活動圖片"} />
+                            <img
+                              src={image.image_url}
+                              alt={image.alt_text || "活動圖片"}
+                            />
 
                             <button
                               type="button"
-                              onClick={() => deleteGalleryImage(image)}
+                              onClick={() => void deleteGalleryImage(image)}
                               disabled={isSaving}
                               aria-label="刪除圖片"
                             >
@@ -2296,6 +2443,73 @@ export default function AdminPage() {
                             </button>
 
                             <span>已上傳</span>
+
+                            <div
+                              style={{
+                                width: "100%",
+                                marginTop: "10px",
+                                paddingTop: "10px",
+                                borderTop: "1px solid rgba(0, 0, 0, 0.12)",
+                              }}
+                            >
+                              <strong
+                                style={{
+                                  display: "block",
+                                  marginBottom: "7px",
+                                  fontSize: "12px",
+                                }}
+                              >
+                                圖中 Model
+                              </strong>
+
+                              {models.length === 0 ? (
+                                <small>尚未建立任何 Model。</small>
+                              ) : (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexWrap: "wrap",
+                                    gap: "6px",
+                                  }}
+                                >
+                                  {models.map((model) => {
+                                    const selected = image.modelIds.includes(
+                                      model.id
+                                    );
+
+                                    return (
+                                      <button
+                                        key={`${image.id}-${model.id}`}
+                                        type="button"
+                                        onClick={() =>
+                                          toggleImageModel(image.id, model.id)
+                                        }
+                                        disabled={isSaving}
+                                        style={{
+                                          position: "static",
+                                          width: "auto",
+                                          height: "auto",
+                                          padding: "5px 7px",
+                                          borderRadius: "0",
+                                          border: selected
+                                            ? "1px solid #8d6327"
+                                            : "1px solid #c9c2b6",
+                                          color: selected ? "#ffffff" : "#4c453a",
+                                          background: selected
+                                            ? "#8d6327"
+                                            : "#ffffff",
+                                          fontSize: "12px",
+                                          lineHeight: 1.2,
+                                        }}
+                                      >
+                                        {selected ? "✓ " : "+ "}
+                                        {model.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         ))}
 
@@ -2316,6 +2530,19 @@ export default function AdminPage() {
                             </button>
 
                             <span>待上傳</span>
+
+                            <small
+                              style={{
+                                display: "block",
+                                width: "100%",
+                                marginTop: "9px",
+                                color: "#6c655c",
+                                fontSize: "11px",
+                                lineHeight: 1.5,
+                              }}
+                            >
+                              儲存活動後即可為此圖片選擇圖中 Model。
+                            </small>
                           </div>
                         ))}
                       </div>
@@ -2340,7 +2567,7 @@ export default function AdminPage() {
                     newValue={newModelName}
                     onNewValueChange={setNewModelName}
                     onCreate={() =>
-                      createLookup(
+                      void createLookup(
                         "models",
                         newModelName,
                         "modelIds",
@@ -2360,7 +2587,7 @@ export default function AdminPage() {
                     newValue={newThemeName}
                     onNewValueChange={setNewThemeName}
                     onCreate={() =>
-                      createLookup(
+                      void createLookup(
                         "themes",
                         newThemeName,
                         "themeIds",
@@ -2380,7 +2607,7 @@ export default function AdminPage() {
                     newValue={newOutfitName}
                     onNewValueChange={setNewOutfitName}
                     onCreate={() =>
-                      createLookup(
+                      void createLookup(
                         "outfits",
                         newOutfitName,
                         "outfitIds",
