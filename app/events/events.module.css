@@ -455,11 +455,13 @@
   min-height: 31px;
   padding: 0 10px;
   border: 1px solid rgb(227 199 150 / 21%);
+  border-radius: 0;
   color: #c0b9ae;
   background: rgb(255 255 255 / 2%);
   cursor: pointer;
   font: inherit;
   font-size: 12px;
+  letter-spacing: 0.15px;
   transition:
     color 0.18s ease,
     border-color 0.18s ease,
@@ -556,7 +558,9 @@
   position: relative;
   height: 250px;
   overflow: hidden;
+  background-color: #0b0b0a;
   background-position: center;
+  background-repeat: no-repeat;
   background-size: cover;
 }
 
@@ -610,6 +614,7 @@
   padding: 8px 0 7px;
   color: #171512;
   background: #f8f5ee;
+  box-shadow: 0 10px 25px rgb(0 0 0 / 22%);
   text-align: center;
 }
 
@@ -654,10 +659,26 @@
 }
 
 .eventBody {
+  position: relative;
   padding: 23px 22px 21px;
   background:
     linear-gradient(135deg, rgb(255 255 255 / 2%), transparent 48%),
     var(--event-panel);
+}
+
+.eventBody::after {
+  position: absolute;
+  right: 20px;
+  bottom: 0;
+  left: 20px;
+  height: 1px;
+  content: "";
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(217 183 126 / 18%),
+    transparent
+  );
 }
 
 .eventTheme {
@@ -665,8 +686,10 @@
   margin: 0;
   overflow: hidden;
   color: var(--event-gold);
-  font-size: 12px;
-  letter-spacing: 0.35px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.55px;
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -708,9 +731,9 @@
 
 .modelTags {
   display: flex;
+  min-height: 27px;
   flex-wrap: wrap;
   gap: 6px;
-  min-height: 27px;
   margin-top: 14px;
 }
 
@@ -938,7 +961,7 @@
 }
 
 /* =========================================================
-   Responsive
+   Tablet
 ========================================================= */
 
 @media (max-width: 1000px) {
@@ -954,6 +977,10 @@
     right: 45px;
   }
 }
+
+/* =========================================================
+   Mobile
+========================================================= */
 
 @media (max-width: 700px) {
   .topbar {
@@ -1059,8 +1086,10 @@
     flex-direction: column;
     gap: 13px;
   }
-  /* =========================================================
-   Premium compact tuning
+}
+
+/* =========================================================
+   Premium compact tuning - Desktop only
 ========================================================= */
 
 @media (min-width: 1001px) {
@@ -1102,100 +1131,4 @@
     margin-top: 13px;
     padding-top: 13px;
   }
-}
-
-/* 篩選按鈕更像精品網站的 tag，不像舊式表單按鈕 */
-.filterChip,
-.activeFilterChip {
-  border-radius: 0;
-  letter-spacing: 0.15px;
-}
-
-/* 卡片資訊底部增加一點層次 */
-.eventBody {
-  position: relative;
-}
-
-.eventBody::after {
-  position: absolute;
-  right: 20px;
-  bottom: 0;
-  left: 20px;
-  height: 1px;
-  content: "";
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgb(217 183 126 / 18%),
-    transparent
-  );
-}
-
-/* 日期牌更像雜誌編排 */
-.dateBadge {
-  box-shadow: 0 10px 25px rgb(0 0 0 / 22%);
-}
-
-/* 活動主題列限制高度，避免 tag 太長把卡片撐亂 */
-.eventTheme {
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.55px;
-  line-height: 18px;
-}
-/* =========================================================
-   Event card desktop compact layout
-========================================================= */
-
-@media (min-width: 1001px) {
-  .eventImage {
-    height: 205px;
-  }
-
-  .eventBody {
-    padding: 17px 20px 16px;
-  }
-
-  .eventTheme {
-    min-height: 16px;
-    font-size: 10px;
-    line-height: 16px;
-  }
-
-  .eventBody h3 {
-    min-height: 0;
-    margin: 6px 0 8px;
-    font-size: 23px;
-    line-height: 1.25;
-  }
-
-  .eventDate {
-    margin-bottom: 7px;
-  }
-
-  .eventInfo {
-    font-size: 12px;
-    line-height: 1.7;
-  }
-
-  .modelTags {
-    min-height: 0;
-    margin-top: 10px;
-  }
-
-  .modelTags span {
-    padding: 4px 7px;
-    font-size: 10px;
-  }
-
-  .eventFooter {
-    min-height: 43px;
-    margin-top: 11px;
-    padding-top: 11px;
-  }
-
-  .eventFooter strong {
-    font-size: 17px;
-  }
-}
 }

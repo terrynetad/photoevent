@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import styles from "./events.module.css";
 
@@ -92,11 +92,23 @@ function ensureArray<T>(value: T | T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [value];
 }
 
+function isValidDate(value: string | Date | null | undefined) {
+  if (!value) {
+    return false;
+  }
+
+  return !Number.isNaN(new Date(value).getTime());
+}
+
 function getDatePart(
   value: string | Date,
   type: Intl.DateTimeFormatPartTypes,
   locale = "en-GB"
 ) {
+  if (!isValidDate(value)) {
+    return "";
+  }
+
   const parts = new Intl.DateTimeFormat(locale, {
     timeZone: HONG_KONG_TIME_ZONE,
     year: "numeric",
@@ -108,13 +120,23 @@ function getDatePart(
 }
 
 function formatEventDate(value: string) {
+  if (!isValidDate(value)) {
+    return {
+      day: "—",
+      month: "—",
+      full: "日期待公布",
+    };
+  }
+
+  const eventDate = new Date(value);
+
   return {
-    day: getDatePart(value, "day"),
+    day: getDatePart(eventDate, "day"),
     month: new Intl.DateTimeFormat("en-GB", {
       timeZone: HONG_KONG_TIME_ZONE,
       month: "short",
     })
-      .format(new Date(value))
+      .format(eventDate)
       .toUpperCase(),
     full: new Intl.DateTimeFormat("zh-HK", {
       timeZone: HONG_KONG_TIME_ZONE,
@@ -122,12 +144,12 @@ function formatEventDate(value: string) {
       month: "long",
       day: "numeric",
       weekday: "short",
-    }).format(new Date(value)),
+    }).format(eventDate),
   };
 }
 
 function formatTime(value: string | null) {
-  if (!value) {
+  if (!value || !isValidDate(value)) {
     return "";
   }
 
@@ -142,6 +164,14 @@ function formatTime(value: string | null) {
 function formatTimeRange(startAt: string, endAt: string | null) {
   const start = formatTime(startAt);
   const end = formatTime(endAt);
+
+  if (!start && !end) {
+    return "時間待公布";
+  }
+
+  if (!start && end) {
+    return end;
+  }
 
   return end ? `${start} - ${end}` : start;
 }
@@ -164,7 +194,7 @@ function formatPrice(
     maximumFractionDigits: 0,
   }).format(amount);
 
-  const currencyCode = (currency || "HKD").toUpperCase();
+  const currencyCode = (currency || "HKD").trim().toUpperCase();
 
   if (currencyCode === "HKD" || currencyCode === "HK$") {
     return `HK$${formattedAmount}`;
@@ -182,13 +212,27 @@ function formatPrice(
 }
 
 function uniqueNames(values: string[]) {
-  return [...new Set(values.filter(Boolean))];
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
 function isUpcomingEvent(event: EventView) {
-  const comparisonTime = new Date(event.endAt || event.startAt).getTime();
+  const eventTime = new Date(event.endAt || event.startAt).getTime();
 
-  return comparisonTime >= Date.now();
+  if (Number.isNaN(eventTime)) {
+    return false;
+  }
+
+  return eventTime >= Date.now();
+}
+
+function getEventHref(slug: string) {
+  const normalizedSlug = slug.trim();
+
+  return normalizedSlug ? `/events/${encodeURIComponent(normalizedSlug)}` : "/events";
+}
+
+function getSafeImageUrl(imageUrl: string) {
+  return imageUrl.replace(/["\\]/g, "\\$&");
 }
 
 export default function EventsPage() {
@@ -197,152 +241,141 @@ export default function EventsPage() {
   const [loadError, setLoadError] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<EventStatusFilter>("upcoming");
+  const [statusFilter, setStatusFilter] =
+    useState<EventStatusFilter>("upcoming");
   const [selectedModel, setSelectedModel] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("");
   const [selectedOutfit, setSelectedOutfit] = useState("");
 
-  useEffect(() => {
-    let isMounted = true;
+  const loadEvents = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError("");
 
-    async function loadEvents() {
-      setIsLoading(true);
-      setLoadError("");
-
-      try {
-        const { data, error } = await supabase
-          .from("activities")
-          .select(
-            `
-              id,
-              title,
-              slug,
-              description,
-              start_at,
-              end_at,
-              location_name,
-              location_address,
-              price,
-              currency,
-              cover_image_url,
+    try {
+      const { data, error } = await supabase
+        .from("activities")
+        .select(
+          `
+            id,
+            title,
+            slug,
+            description,
+            start_at,
+            end_at,
+            location_name,
+            location_address,
+            price,
+            currency,
+            cover_image_url,
+            sort_order,
+            activity_images (
+              image_url,
+              alt_text,
+              sort_order
+            ),
+            activity_models (
               sort_order,
-              activity_images (
-                image_url,
-                alt_text,
-                sort_order
-              ),
-              activity_models (
-                sort_order,
-                models (
-                  name
-                )
-              ),
-              activity_themes (
-                themes (
-                  name
-                )
-              ),
-              activity_outfits (
-                outfits (
-                  name
-                )
+              models (
+                name
               )
-            `
-          )
-          .eq("status", "published")
-          .order("start_at", { ascending: true })
-          .order("sort_order", { ascending: true });
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        const activityRows = (data ?? []) as unknown as ActivityRow[];
-
-        const mappedEvents = activityRows.map((activity, index): EventView => {
-          const sortedImages = [...(activity.activity_images ?? [])].sort(
-            (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
-          );
-
-          const sortedModelRelations = [
-            ...(activity.activity_models ?? []),
-          ].sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
-
-          const modelNames = uniqueNames(
-            sortedModelRelations.flatMap((relation) =>
-              ensureArray(relation.models)
-                .map((model) => model.name?.trim() || "")
-                .filter(Boolean)
+            ),
+            activity_themes (
+              themes (
+                name
+              )
+            ),
+            activity_outfits (
+              outfits (
+                name
+              )
             )
-          );
+          `
+        )
+        .eq("status", "published")
+        .order("start_at", { ascending: true })
+        .order("sort_order", { ascending: true });
 
-          const themeNames = uniqueNames(
-            (activity.activity_themes ?? []).flatMap((relation) =>
-              ensureArray(relation.themes)
-                .map((theme) => theme.name?.trim() || "")
-                .filter(Boolean)
-            )
-          );
-
-          const outfitNames = uniqueNames(
-            (activity.activity_outfits ?? []).flatMap((relation) =>
-              ensureArray(relation.outfits)
-                .map((outfit) => outfit.name?.trim() || "")
-                .filter(Boolean)
-            )
-          );
-
-          const displayTags = [...themeNames, ...outfitNames];
-
-          return {
-            id: activity.id,
-            slug: activity.slug?.trim() || "",
-            title: activity.title,
-            description: activity.description?.trim() || "",
-            startAt: activity.start_at,
-            endAt: activity.end_at,
-            location:
-              activity.location_name?.trim() ||
-              activity.location_address?.trim() ||
-              "地點待公布",
-            price: formatPrice(activity.price, activity.currency),
-            image:
-              activity.cover_image_url?.trim() ||
-              sortedImages[0]?.image_url?.trim() ||
-              FALLBACK_EVENT_IMAGES[index % FALLBACK_EVENT_IMAGES.length],
-            modelNames,
-            themeNames,
-            outfitNames,
-            tagText: displayTags.length > 0 ? displayTags.join("・") : "攝影活動",
-          };
-        });
-
-        if (isMounted) {
-          setEvents(mappedEvents);
-        }
-      } catch (error) {
-        console.error("Load all events failed:", error);
-
-        if (isMounted) {
-          setLoadError(
-            `暫時未能載入活動資料：${
-              error instanceof Error ? error.message : "未知錯誤"
-            }`
-          );
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
+      if (error) {
+        throw new Error(error.message);
       }
+
+      const activityRows = (data ?? []) as unknown as ActivityRow[];
+
+      const mappedEvents = activityRows.map((activity, index): EventView => {
+        const sortedImages = [...(activity.activity_images ?? [])].sort(
+          (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
+        );
+
+        const sortedModelRelations = [...(activity.activity_models ?? [])].sort(
+          (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
+        );
+
+        const modelNames = uniqueNames(
+          sortedModelRelations.flatMap((relation) =>
+            ensureArray(relation.models)
+              .map((model) => model.name?.trim() || "")
+              .filter(Boolean)
+          )
+        );
+
+        const themeNames = uniqueNames(
+          (activity.activity_themes ?? []).flatMap((relation) =>
+            ensureArray(relation.themes)
+              .map((theme) => theme.name?.trim() || "")
+              .filter(Boolean)
+          )
+        );
+
+        const outfitNames = uniqueNames(
+          (activity.activity_outfits ?? []).flatMap((relation) =>
+            ensureArray(relation.outfits)
+              .map((outfit) => outfit.name?.trim() || "")
+              .filter(Boolean)
+          )
+        );
+
+        const displayTags = [...themeNames, ...outfitNames];
+
+        return {
+          id: activity.id,
+          slug: activity.slug?.trim() || "",
+          title: activity.title?.trim() || "未命名活動",
+          description: activity.description?.trim() || "",
+          startAt: activity.start_at,
+          endAt: activity.end_at,
+          location:
+            activity.location_name?.trim() ||
+            activity.location_address?.trim() ||
+            "地點待公布",
+          price: formatPrice(activity.price, activity.currency),
+          image:
+            activity.cover_image_url?.trim() ||
+            sortedImages[0]?.image_url?.trim() ||
+            FALLBACK_EVENT_IMAGES[index % FALLBACK_EVENT_IMAGES.length],
+          modelNames,
+          themeNames,
+          outfitNames,
+          tagText: displayTags.length > 0 ? displayTags.join("・") : "攝影活動",
+        };
+      });
+
+      setEvents(mappedEvents);
+    } catch (error) {
+      console.error("Load all events failed:", error);
+
+      setLoadError(
+        `暫時未能載入活動資料：${
+          error instanceof Error ? error.message : "未知錯誤"
+        }`
+      );
+    } finally {
+      setIsLoading(false);
     }
-
-    loadEvents();
-
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  useEffect(() => {
+    void loadEvents();
+  }, [loadEvents]);
 
   const availableModels = useMemo(
     () =>
@@ -437,7 +470,11 @@ export default function EventsPage() {
   return (
     <main className={styles.eventsPage}>
       <header className={styles.topbar}>
-        <Link href="/" className={styles.brand} aria-label="返回 PhotoEvent 首頁">
+        <Link
+          href="/"
+          className={styles.brand}
+          aria-label="返回 PhotoEvent 首頁"
+        >
           <span className={styles.brandMark}>P</span>
 
           <span>
@@ -448,9 +485,11 @@ export default function EventsPage() {
 
         <nav className={styles.navLinks} aria-label="主要導覽">
           <Link href="/">首頁</Link>
+
           <Link className={styles.activeNavLink} href="/events">
             活動列表
           </Link>
+
           <Link href="/#calendar">活動日曆</Link>
           <Link href="/#models">Models</Link>
           <Link href="/#categories">主題分類</Link>
@@ -464,7 +503,9 @@ export default function EventsPage() {
       <section
         className={styles.hero}
         style={{
-          backgroundImage: `linear-gradient(90deg, rgba(10, 10, 9, 0.9) 0%, rgba(10, 10, 9, 0.56) 47%, rgba(10, 10, 9, 0.22) 100%), url("${EVENTS_HERO_IMAGE}")`,
+          backgroundImage: `linear-gradient(90deg, rgba(10, 10, 9, 0.9) 0%, rgba(10, 10, 9, 0.56) 47%, rgba(10, 10, 9, 0.22) 100%), url("${getSafeImageUrl(
+            EVENTS_HERO_IMAGE
+          )}")`,
         }}
       >
         <div className={styles.heroContent}>
@@ -485,6 +526,7 @@ export default function EventsPage() {
 
         <div className={styles.heroStatistics}>
           <strong>{isLoading ? "—" : eventCounts.upcoming}</strong>
+
           <span>
             場即將舉行
             <br />
@@ -499,7 +541,9 @@ export default function EventsPage() {
             <p className={`${styles.eyebrow} ${styles.darkEyebrow}`}>
               ACTIVITY DIRECTORY
             </p>
+
             <h2>全部活動</h2>
+
             <p>使用搜尋與篩選，快速找到適合你的下一次拍攝企劃。</p>
           </div>
 
@@ -511,13 +555,14 @@ export default function EventsPage() {
         <section className={styles.filterPanel} aria-label="活動篩選工具">
           <div className={styles.searchRow}>
             <label className={styles.searchBox}>
-              <span>⌕</span>
+              <span aria-hidden="true">⌕</span>
 
               <input
                 type="search"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder="搜尋活動名稱、地點、Model、主題或服裝風格⋯"
+                aria-label="搜尋活動"
               />
             </label>
 
@@ -697,8 +742,9 @@ export default function EventsPage() {
             <p className={styles.eyebrow}>DATABASE NOTICE</p>
             <h3>活動資料暫時未能載入</h3>
             <p>{loadError}</p>
-            <button type="button" onClick={() => window.location.reload()}>
-              重新載入頁面
+
+            <button type="button" onClick={() => void loadEvents()}>
+              重新載入資料
             </button>
           </section>
         ) : isLoading ? (
@@ -712,6 +758,7 @@ export default function EventsPage() {
             <p className={styles.eyebrow}>NO MATCHING ACTIVITIES</p>
             <h3>沒有符合目前條件的活動。</h3>
             <p>試試清除搜尋文字或篩選條件，看看其他攝影活動。</p>
+
             <button type="button" onClick={resetFilters}>
               清除全部篩選
             </button>
@@ -721,12 +768,13 @@ export default function EventsPage() {
             {filteredEvents.map((event) => {
               const date = formatEventDate(event.startAt);
               const upcoming = isUpcomingEvent(event);
+              const eventHref = getEventHref(event.slug);
 
               return (
                 <article className={styles.eventCard} key={event.id}>
                   <Link
                     className={styles.imageLink}
-                    href={event.slug ? `/events/${event.slug}` : "/events"}
+                    href={eventHref}
                     aria-label={
                       event.slug
                         ? `查看 ${event.title} 詳情`
@@ -735,7 +783,9 @@ export default function EventsPage() {
                   >
                     <div
                       className={styles.eventImage}
-                      style={{ backgroundImage: `url("${event.image}")` }}
+                      style={{
+                        backgroundImage: `url("${getSafeImageUrl(event.image)}")`,
+                      }}
                     >
                       <div className={styles.dateBadge}>
                         <strong>{date.day}</strong>
@@ -757,7 +807,7 @@ export default function EventsPage() {
 
                     <h3>
                       {event.slug ? (
-                        <Link href={`/events/${event.slug}`}>{event.title}</Link>
+                        <Link href={eventHref}>{event.title}</Link>
                       ) : (
                         event.title
                       )}
@@ -787,7 +837,7 @@ export default function EventsPage() {
                       </span>
 
                       {event.slug ? (
-                        <Link href={`/events/${event.slug}`}>
+                        <Link href={eventHref}>
                           查看詳情 <span>→</span>
                         </Link>
                       ) : (
@@ -804,7 +854,9 @@ export default function EventsPage() {
 
       <section className={styles.bottomCta}>
         <p className={styles.eyebrow}>PHOTOEVENT HONG KONG</p>
+
         <h2>下一場創作，從一個日期開始。</h2>
+
         <p>
           想以日期安排檔期？回到首頁活動日曆，查看每一天已發布的拍攝活動。
         </p>
