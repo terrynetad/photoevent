@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -167,7 +167,7 @@ function getInstagramUrl(value: string | null) {
   return `https://instagram.com/${trimmedValue.replace(/^@/, "")}`;
 }
 
-export default function ModelProfilePage() {
+function ModelProfileContent() {
   const params = useParams<{ slug: string }>();
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
 
@@ -182,8 +182,11 @@ export default function ModelProfilePage() {
 
     async function loadModelProfile() {
       if (!slug) {
-        setNotFound(true);
-        setIsLoading(false);
+        if (isMounted) {
+          setNotFound(true);
+          setIsLoading(false);
+        }
+
         return;
       }
 
@@ -213,9 +216,7 @@ export default function ModelProfilePage() {
         console.error("Supabase model profile query failed:", modelError);
 
         if (isMounted) {
-          setLoadError(
-            "暫時未能載入這位 Model 的資料。請稍後再試。"
-          );
+          setLoadError("暫時未能載入這位 Model 的資料。請稍後再試。");
           setIsLoading(false);
         }
 
@@ -334,6 +335,7 @@ export default function ModelProfilePage() {
         <nav className="detail-nav">
           <Link className="brand" href="/" aria-label="PhotoEvent 首頁">
             <span className="brand-mark">P</span>
+
             <span>
               <strong>PHOTO</strong>
               <em>EVENT</em>
@@ -362,6 +364,7 @@ export default function ModelProfilePage() {
         <nav className="detail-nav">
           <Link className="brand" href="/" aria-label="PhotoEvent 首頁">
             <span className="brand-mark">P</span>
+
             <span>
               <strong>PHOTO</strong>
               <em>EVENT</em>
@@ -377,6 +380,7 @@ export default function ModelProfilePage() {
           <div className="detail-state">
             <p className="eyebrow dark">MODEL NOT FOUND</p>
             <h1>找不到這位 Model。</h1>
+
             <p>
               此頁面可能尚未公開、Model 已停用，或網址 slug 不正確。
             </p>
@@ -433,8 +437,7 @@ export default function ModelProfilePage() {
           <h1>{model.name}</h1>
 
           <p>
-            {model.bio?.trim() ||
-              "PhotoEvent 攝影活動合作 Model。"}
+            {model.bio?.trim() || "PhotoEvent 攝影活動合作 Model。"}
           </p>
 
           <div className="model-profile-hero-actions">
@@ -464,9 +467,7 @@ export default function ModelProfilePage() {
             <p>以下僅顯示目前狀態為 published 的活動資料。</p>
           </div>
 
-          <span className="models-count">
-            {activities.length} 場活動
-          </span>
+          <span className="models-count">{activities.length} 場活動</span>
         </div>
 
         {loadError ? (
@@ -569,5 +570,40 @@ export default function ModelProfilePage() {
         <Link href="/models">返回 Models 列表 ↑</Link>
       </footer>
     </main>
+  );
+}
+
+export default function ModelProfilePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="detail-page">
+          <nav className="detail-nav">
+            <Link className="brand" href="/" aria-label="PhotoEvent 首頁">
+              <span className="brand-mark">P</span>
+
+              <span>
+                <strong>PHOTO</strong>
+                <em>EVENT</em>
+              </span>
+            </Link>
+
+            <Link className="detail-nav-back" href="/models">
+              ← 所有 Models
+            </Link>
+          </nav>
+
+          <section className="detail-state-page">
+            <div className="detail-state">
+              <p className="eyebrow dark">LOADING MODEL PROFILE</p>
+              <h1>正在載入 Model 資料⋯</h1>
+              <p>系統正在準備此頁面的公開資訊。</p>
+            </div>
+          </section>
+        </main>
+      }
+    >
+      <ModelProfileContent />
+    </Suspense>
   );
 }

@@ -13,13 +13,6 @@ const FALLBACK_EVENT_IMAGES = [
   "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=85",
 ];
 
-//const FALLBACK_MODEL_IMAGES = [
- // "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=900&q=85",
- // "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=900&q=85",
- // "https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=900&q=85",
- // "https://images.unsplash.com/photo-1524250502761-1ac6f2e30d43?auto=format&fit=crop&w=900&q=85",
-//];
-
 const CATEGORY_ICONS = ["◐", "✦", "◒", "◈", "◑", "☾"];
 
 type RelationModel = {
@@ -112,6 +105,7 @@ type ModelView = {
   englishName: string;
   style: string;
   image: string;
+  fallbackImage: string;
 };
 
 type CategoryView = {
@@ -221,22 +215,6 @@ function getEnglishName(name: string) {
   return name.slice(0, 2).toUpperCase();
 }
 
-function getModelInitial(name: string) {
-  const trimmedName = name.trim();
-
-  if (!trimmedName) {
-    return "M";
-  }
-
-  const englishOnly = trimmedName.replace(/[^\u0000-\u007f]/g, "").trim();
-
-  if (englishOnly) {
-    return englishOnly.slice(0, 1).toUpperCase();
-  }
-
-  return trimmedName.slice(0, 1).toUpperCase();
-}
-
 function toHongKongDateKey(value: string) {
   const year = getDatePart(value, "year");
   const month = getDatePart(value, "month");
@@ -267,13 +245,11 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
-  // 月曆目前顯示的年月，例如 { year: 2026, month: 11 }
   const [calendarMonth, setCalendarMonth] = useState<{
     year: number;
     month: number;
   } | null>(null);
 
-  // 使用者目前點選的日期，格式：2026-11-15
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -452,17 +428,20 @@ export default function Home() {
 
         const mappedModels = modelRows
           .filter((model) => Boolean(model.slug?.trim()))
-          .map((model): ModelView => ({
-            id: model.id,
-            name: model.name,
-            slug: model.slug.trim(),
-            englishName: getEnglishName(model.name),
-            style: model.bio?.trim() || "攝影活動 Model",
-            image: getModelImage(
-              model.avatar_url,
-              model.slug?.trim() || model.id
-            ),
-          }));
+          .map((model): ModelView => {
+            const modelKey = model.slug?.trim() || model.id;
+            const fallbackImage = getModelImage(null, modelKey);
+
+            return {
+              id: model.id,
+              name: model.name,
+              slug: model.slug?.trim() || "",
+              englishName: getEnglishName(model.name),
+              style: model.bio?.trim() || "攝影活動 Model",
+              image: getModelImage(model.avatar_url, modelKey),
+              fallbackImage,
+            };
+          });
 
         const categoryCountMap = new Map<string, number>();
 
@@ -495,8 +474,6 @@ export default function Home() {
           setModels(mappedModels);
           setCategories(mappedCategories);
 
-          // 第一次載入時，月曆定位到第一個活動月份，
-          // 並預設選取第一場活動日期。
           if (displayEvents.length > 0) {
             const firstEventDate = getHongKongYearMonth(
               displayEvents[0].startAt
@@ -528,128 +505,124 @@ export default function Home() {
   }, []);
 
   const calendarData = useMemo(() => {
-      const fallbackDate = events[0]?.startAt || "2026-01-01T00:00:00.000Z";
+    const fallbackDate = events[0]?.startAt || "2026-01-01T00:00:00.000Z";
 
-      const activeMonth =
-        calendarMonth || getHongKongYearMonth(fallbackDate);
+    const activeMonth =
+      calendarMonth || getHongKongYearMonth(fallbackDate);
 
-      const { year, month } = activeMonth;
+    const { year, month } = activeMonth;
 
-      const firstDayWeekday = new Date(
-        Date.UTC(year, month - 1, 1)
-      ).getUTCDay();
+    const firstDayWeekday = new Date(
+      Date.UTC(year, month - 1, 1)
+    ).getUTCDay();
 
-      const daysInCurrentMonth = new Date(
-        Date.UTC(year, month, 0)
-      ).getUTCDate();
+    const daysInCurrentMonth = new Date(
+      Date.UTC(year, month, 0)
+    ).getUTCDate();
 
-      const daysInPreviousMonth = new Date(
-        Date.UTC(year, month - 1, 0)
-      ).getUTCDate();
+    const daysInPreviousMonth = new Date(
+      Date.UTC(year, month - 1, 0)
+    ).getUTCDate();
 
-      const eventsByDate = new Map<string, EventView[]>();
+    const eventsByDate = new Map<string, EventView[]>();
 
-      events.forEach((event) => {
-        const dateKey = toHongKongDateKey(event.startAt);
-        const existingEvents = eventsByDate.get(dateKey) ?? [];
+    events.forEach((event) => {
+      const dateKey = toHongKongDateKey(event.startAt);
+      const existingEvents = eventsByDate.get(dateKey) ?? [];
 
-        eventsByDate.set(dateKey, [...existingEvents, event]);
-      });
+      eventsByDate.set(dateKey, [...existingEvents, event]);
+    });
 
-      const calendarCells = Array.from({ length: 42 }, (_, index) => {
-        const dayNumber = index - firstDayWeekday + 1;
+    const calendarCells = Array.from({ length: 42 }, (_, index) => {
+      const dayNumber = index - firstDayWeekday + 1;
 
-        if (dayNumber <= 0) {
-          return {
-            day: daysInPreviousMonth + dayNumber,
-            dateKey: "",
-            muted: true,
-            hasEvent: false,
-            events: [] as EventView[],
-            key: `previous-${year}-${month}-${daysInPreviousMonth + dayNumber}`,
-          };
-        }
-
-        if (dayNumber > daysInCurrentMonth) {
-          return {
-            day: dayNumber - daysInCurrentMonth,
-            dateKey: "",
-            muted: true,
-            hasEvent: false,
-            events: [] as EventView[],
-            key: `next-${year}-${month}-${dayNumber - daysInCurrentMonth}`,
-          };
-        }
-
-        const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(
-          dayNumber
-        ).padStart(2, "0")}`;
-
-        const dateEvents = eventsByDate.get(dateKey) ?? [];
-
+      if (dayNumber <= 0) {
         return {
-          day: dayNumber,
-          dateKey,
-          muted: false,
-          hasEvent: dateEvents.length > 0,
-          events: dateEvents,
-          key: dateKey,
+          day: daysInPreviousMonth + dayNumber,
+          dateKey: "",
+          muted: true,
+          hasEvent: false,
+          events: [] as EventView[],
+          key: `previous-${year}-${month}-${daysInPreviousMonth + dayNumber}`,
         };
-      });
+      }
+
+      if (dayNumber > daysInCurrentMonth) {
+        return {
+          day: dayNumber - daysInCurrentMonth,
+          dateKey: "",
+          muted: true,
+          hasEvent: false,
+          events: [] as EventView[],
+          key: `next-${year}-${month}-${dayNumber - daysInCurrentMonth}`,
+        };
+      }
+
+      const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(
+        dayNumber
+      ).padStart(2, "0")}`;
+
+      const dateEvents = eventsByDate.get(dateKey) ?? [];
 
       return {
-        year,
-        month,
-        label: formatCalendarMonth(year, month),
-        calendarCells,
+        day: dayNumber,
+        dateKey,
+        muted: false,
+        hasEvent: dateEvents.length > 0,
+        events: dateEvents,
+        key: dateKey,
       };
-    }, [calendarMonth, events]);
+    });
 
-    const selectedDateEvents = useMemo(() => {
-      if (!selectedDateKey) {
-        return [];
-      }
+    return {
+      year,
+      month,
+      label: formatCalendarMonth(year, month),
+      calendarCells,
+    };
+  }, [calendarMonth, events]);
 
-      return events.filter(
-        (event) => toHongKongDateKey(event.startAt) === selectedDateKey
-      );
-    }, [events, selectedDateKey]);
+  const selectedDateEvents = useMemo(() => {
+    if (!selectedDateKey) {
+      return [];
+    }
 
-    function changeCalendarMonth(direction: -1 | 1) {
-      setCalendarMonth((currentMonth) => {
-        const baseMonth =
-          currentMonth ||
-          getHongKongYearMonth(
-            events[0]?.startAt || "2026-01-01T00:00:00.000Z"
-          );
+    return events.filter(
+      (event) => toHongKongDateKey(event.startAt) === selectedDateKey
+    );
+  }, [events, selectedDateKey]);
 
-        const nextDate = new Date(
-          Date.UTC(baseMonth.year, baseMonth.month - 1 + direction, 1)
+  function changeCalendarMonth(direction: -1 | 1) {
+    setCalendarMonth((currentMonth) => {
+      const baseMonth =
+        currentMonth ||
+        getHongKongYearMonth(
+          events[0]?.startAt || "2026-01-01T00:00:00.000Z"
         );
 
-        return {
-          year: nextDate.getUTCFullYear(),
-          month: nextDate.getUTCMonth() + 1,
-        };
-      });
+      const nextDate = new Date(
+        Date.UTC(baseMonth.year, baseMonth.month - 1 + direction, 1)
+      );
 
-      // 切換月份時清除原本日期選取，避免選中上個月的日期。
-      setSelectedDateKey(null);
+      return {
+        year: nextDate.getUTCFullYear(),
+        month: nextDate.getUTCMonth() + 1,
+      };
+    });
+
+    setSelectedDateKey(null);
+  }
+
+  function selectCalendarDate(
+    dateKey: string,
+    muted: boolean
+  ) {
+    if (muted || !dateKey) {
+      return;
     }
 
-    function selectCalendarDate(
-      dateKey: string,
-      _dateEvents: EventView[],
-      muted: boolean
-    ) {
-      if (muted || !dateKey) {
-        return;
-      }
-
-      // 日期只負責選取與更新月曆下方活動摘要，
-      // 不自動捲動到近期活動區。
-      setSelectedDateKey(dateKey);
-    }
+    setSelectedDateKey(dateKey);
+  }
 
   const visibleEvents = events.slice(0, 3);
   const visibleModels = models.slice(0, 4);
@@ -660,6 +633,7 @@ export default function Home() {
       <nav className="navbar">
         <a className="brand" href="#top" aria-label="PhotoEvent 首頁">
           <span className="brand-mark">P</span>
+
           <span>
             <strong>PHOTO</strong>
             <em>EVENT</em>
@@ -670,9 +644,13 @@ export default function Home() {
           <a className="active" href="#top">
             首頁
           </a>
+
           <Link href="/events">活動列表</Link>
+
           <a href="#calendar">活動日曆</a>
+
           <Link href="/models">Models</Link>
+
           <a href="#categories">主題分類</a>
         </div>
 
@@ -714,6 +692,7 @@ export default function Home() {
 
         <div className="hero-stat">
           <strong>{isLoading ? "—" : events.length}</strong>
+
           <span>
             即將舉辦
             <br />
@@ -727,6 +706,7 @@ export default function Home() {
           <div>
             <p className="eyebrow dark">UPCOMING EVENTS</p>
             <h2>近期活動</h2>
+
             <p>
               所有活動資料均由 PhotoEvent 即時整理，讓你更輕鬆安排下一次人像創作。
             </p>
@@ -816,6 +796,7 @@ export default function Home() {
         <div>
           <p className="eyebrow">EVENT CALENDAR</p>
           <h2>用日曆，安排下一次創作。</h2>
+
           <p>
             依日期查看已發布的攝影活動，預留檔期、準備器材，
             然後安心地把靈感變成照片。
@@ -828,16 +809,6 @@ export default function Home() {
               type="button"
               aria-label="查看上一個月"
               onClick={() => changeCalendarMonth(-1)}
-              style={{
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                color: "inherit",
-                font: "inherit",
-                fontSize: "1.35rem",
-                lineHeight: 1,
-                padding: "0.2rem 0.4rem",
-              }}
             >
               ‹
             </button>
@@ -848,16 +819,6 @@ export default function Home() {
               type="button"
               aria-label="查看下一個月"
               onClick={() => changeCalendarMonth(1)}
-              style={{
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                color: "inherit",
-                font: "inherit",
-                fontSize: "1.35rem",
-                lineHeight: 1,
-                padding: "0.2rem 0.4rem",
-              }}
             >
               ›
             </button>
@@ -891,11 +852,7 @@ export default function Home() {
                   }
                   aria-pressed={isSelected}
                   onClick={() =>
-                    selectCalendarDate(
-                      cell.dateKey,
-                      cell.events,
-                      cell.muted
-                    )
+                    selectCalendarDate(cell.dateKey, cell.muted)
                   }
                   className={[
                     cell.muted ? "muted" : "",
@@ -903,44 +860,6 @@ export default function Home() {
                   ]
                     .filter(Boolean)
                     .join(" ")}
-                  style={{
-                    border: isSelected
-                      ? "1px solid #8E3F23"
-                      : cell.hasEvent
-                        ? "1px solid #D8AB59"
-                        : "1px solid transparent",
-
-                    background: isSelected
-                      ? "#B85C38"
-                      : cell.hasEvent
-                        ? "#E8C98A"
-                        : "transparent",
-
-                    color: isSelected
-                      ? "#FFFFFF"
-                      : cell.hasEvent
-                        ? "#5C3517"
-                        : cell.muted
-                          ? "#C9C2B7"
-                          : "#1D1813",
-
-                    fontWeight: isSelected || cell.hasEvent ? 700 : 500,
-
-                    boxShadow: isSelected
-                      ? "0 3px 8px rgba(126, 61, 33, 0.28)"
-                      : cell.hasEvent
-                        ? "0 2px 5px rgba(140, 97, 35, 0.16)"
-                        : "none",
-
-                    borderRadius: "50%",
-                    cursor: cell.muted ? "default" : "pointer",
-                    minWidth: "1.9rem",
-                    minHeight: "1.9rem",
-                    padding: 0,
-                    font: "inherit",
-                    transition:
-                      "background-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease",
-                  }}
                 >
                   {cell.day}
                 </button>
@@ -959,83 +878,32 @@ export default function Home() {
               lineHeight: 1.6,
             }}
           >
-           {selectedDateKey && selectedDateEvents.length > 0 ? (
+            {selectedDateKey && selectedDateEvents.length > 0 ? (
               selectedDateEvents.map((event) =>
                 event.slug ? (
                   <Link
+                    className="calendar-event-summary"
                     href={`/events/${event.slug}`}
                     key={event.id}
                     aria-label={`查看 ${event.title} 活動詳情`}
-                    style={{
-                      display: "block",
-                      width: "100%",
-                      margin: 0,
-                      padding: 0,
-                      border: "none",
-                      outline: "none",
-                      background: "transparent",
-                      color: "inherit",
-                      textAlign: "left",
-                      cursor: "pointer",
-                      font: "inherit",
-                      lineHeight: 1.45,
-                    }}
                   >
-                    <strong
-                      style={{
-                        display: "block",
-                        color: "#17130f",
-                        fontSize: "0.84rem",
-                        fontWeight: 700,
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      {event.title}
-                    </strong>
+                    <strong>{event.title}</strong>
 
-                    <span
-                      style={{
-                        display: "block",
-                        marginTop: "0.16rem",
-                        color: "#5c3517",
-                        fontSize: "0.76rem",
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      {formatTimeRange(event.startAt, event.endAt)} ・ {event.location}
+                    <span>
+                      {formatTimeRange(event.startAt, event.endAt)} ・{" "}
+                      {event.location}
                     </span>
                   </Link>
                 ) : (
                   <div
+                    className="calendar-event-summary"
                     key={event.id}
-                    style={{
-                      width: "100%",
-                      color: "inherit",
-                      lineHeight: 1.45,
-                    }}
                   >
-                    <strong
-                      style={{
-                        display: "block",
-                        color: "#17130f",
-                        fontSize: "0.84rem",
-                        fontWeight: 700,
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      {event.title}
-                    </strong>
+                    <strong>{event.title}</strong>
 
-                    <span
-                      style={{
-                        display: "block",
-                        marginTop: "0.16rem",
-                        color: "#5c3517",
-                        fontSize: "0.76rem",
-                        lineHeight: 1.5,
-                      }}
-                    >
-                      {formatTimeRange(event.startAt, event.endAt)} ・ {event.location}
+                    <span>
+                      {formatTimeRange(event.startAt, event.endAt)} ・{" "}
+                      {event.location}
                     </span>
                   </div>
                 )
@@ -1054,17 +922,15 @@ export default function Home() {
             )}
           </div>
         </div>
-      </section>  
-      
+      </section>
 
       <section className="section models-section" id="models">
         <div className="section-heading">
           <div>
             <p className="eyebrow dark">FEATURED MODELS</p>
             <h2>認識本月 Model</h2>
-            <p>
-              依 Model 尋找活動，快速掌握她們下一次拍攝安排。
-            </p>
+
+            <p>依 Model 尋找活動，快速掌握她們下一次拍攝安排。</p>
           </div>
 
           <Link className="view-all" href="/models">
@@ -1079,40 +945,39 @@ export default function Home() {
         ) : visibleModels.length === 0 ? (
           <div className="data-state">
             <strong>暫時沒有可公開顯示的 Model</strong>
+
             <p>
               請確認 models 資料表的 is_active 為 true，且每位 Model 已設定 slug。
             </p>
           </div>
         ) : (
           <div className="model-grid">
-            {visibleModels.map((model) => {
-              const hasAvatar = Boolean(model.avatarUrl);
+            {visibleModels.map((model) => (
+              <Link
+                className="model-card model-card-link"
+                href={`/models/${model.slug}`}
+                key={model.id}
+                aria-label={`查看 ${model.name} 的個人頁`}
+              >
+                <img
+                  className="model-image"
+                  src={model.image}
+                  alt={`${model.name} Model 相片`}
+                  onError={(event) => {
+                    if (event.currentTarget.src !== model.fallbackImage) {
+                      event.currentTarget.src = model.fallbackImage;
+                    }
+                  }}
+                />
 
-              return (
-                <Link
-                  className="model-card model-card-link"
-                  href={`/models/${model.slug}`}
-                  key={model.id}
-                  aria-label={`查看 ${model.name} 的個人頁`}
-                >
-                  <img
-                    className="model-image"
-                    src={model.image}
-                    alt={`${model.name} Model 相片`}
-                    onError={(event) => {
-                      event.currentTarget.src = "/images/models/image1.jpeg";
-                    }}
-                  />
-
-                  <div className="model-overlay">
-                    <p>{model.englishName}</p>
-                    <h3>{model.name}</h3>
-                    <span>{model.style}</span>
-                    <small>查看個人頁 →</small>
-                  </div>
-                </Link>
-              );
-            })}
+                <div className="model-overlay">
+                  <p>{model.englishName}</p>
+                  <h3>{model.name}</h3>
+                  <span>{model.style}</span>
+                  <small>查看個人頁 →</small>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </section>
@@ -1122,6 +987,7 @@ export default function Home() {
           <div>
             <p className="eyebrow dark">EXPLORE BY STYLE</p>
             <h2>依主題探索</h2>
+
             <p>
               從服裝、燈光、風格到拍攝情緒，找到你下一場最想按下快門的創作。
             </p>
@@ -1170,6 +1036,7 @@ export default function Home() {
       <footer>
         <a className="brand footer-brand" href="#top">
           <span className="brand-mark">P</span>
+
           <span>
             <strong>PHOTO</strong>
             <em>EVENT</em>

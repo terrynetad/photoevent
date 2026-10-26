@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+const DEFAULT_MODEL_IMAGES = [
+  "/images/models/image1.jpeg",
+  "/images/models/image2.jpeg",
+  "/images/models/image3.jpeg",
+  "/images/models/image4.jpeg",
+];
+
 type ModelRow = {
   id: string;
   name: string;
@@ -15,22 +22,6 @@ type ModelRow = {
   sort_order: number;
 };
 
-function getModelInitial(name: string) {
-  const trimmedName = name.trim();
-
-  if (!trimmedName) {
-    return "M";
-  }
-
-  const englishOnly = trimmedName.replace(/[^\u0000-\u007f]/g, "").trim();
-
-  if (englishOnly) {
-    return englishOnly.slice(0, 1).toUpperCase();
-  }
-
-  return trimmedName.slice(0, 1).toUpperCase();
-}
-
 function getEnglishName(name: string) {
   const englishOnly = name.replace(/[^\u0000-\u007f]/g, "").trim();
 
@@ -39,6 +30,60 @@ function getEnglishName(name: string) {
   }
 
   return name.slice(0, 2).toUpperCase();
+}
+
+function getDefaultModelImage(index: number) {
+  return DEFAULT_MODEL_IMAGES[index % DEFAULT_MODEL_IMAGES.length];
+}
+
+function normalizeImageUrl(value: string | null | undefined) {
+  const imageUrl = value?.trim();
+
+  if (!imageUrl) {
+    return "";
+  }
+
+  if (imageUrl.startsWith("public/")) {
+    return `/${imageUrl.replace(/^public\//, "")}`;
+  }
+
+  if (imageUrl.startsWith("./public/")) {
+    return `/${imageUrl.replace(/^\.\/public\//, "")}`;
+  }
+
+  return imageUrl;
+}
+
+function ModelPhoto({
+  avatarUrl,
+  fallbackUrl,
+  modelName,
+}: {
+  avatarUrl: string | null;
+  fallbackUrl: string;
+  modelName: string;
+}) {
+  const normalizedAvatarUrl = normalizeImageUrl(avatarUrl);
+  const [imageSrc, setImageSrc] = useState(
+    normalizedAvatarUrl || fallbackUrl
+  );
+
+  useEffect(() => {
+    setImageSrc(normalizedAvatarUrl || fallbackUrl);
+  }, [normalizedAvatarUrl, fallbackUrl]);
+
+  return (
+    <img
+      className="models-directory-photo"
+      src={imageSrc}
+      alt={`${modelName} 的 Model 相片`}
+      onError={() => {
+        if (imageSrc !== fallbackUrl) {
+          setImageSrc(fallbackUrl);
+        }
+      }}
+    />
+  );
 }
 
 export default function ModelsPage() {
@@ -118,7 +163,11 @@ export default function ModelsPage() {
         <div className="models-hero-content">
           <p className="eyebrow">PHOTOEVENT MODELS</p>
 
-          <h1>認識每一位，<br />讓靈感有了名字。</h1>
+          <h1>
+            認識每一位，
+            <br />
+            讓靈感有了名字。
+          </h1>
 
           <p>
             依 Model 探索已公開的攝影活動、拍攝主題與下一次創作安排。
@@ -136,9 +185,7 @@ export default function ModelsPage() {
           </div>
 
           {!isLoading && !loadError ? (
-            <span className="models-count">
-              {models.length} 位 Model
-            </span>
+            <span className="models-count">{models.length} 位 Model</span>
           ) : null}
         </div>
 
@@ -160,7 +207,7 @@ export default function ModelsPage() {
         ) : (
           <div className="models-directory-grid">
             {models.map((model, index) => {
-              const hasAvatar = Boolean(model.avatar_url?.trim());
+              const fallbackImage = getDefaultModelImage(index);
 
               return (
                 <Link
@@ -170,18 +217,11 @@ export default function ModelsPage() {
                   aria-label={`查看 ${model.name} 的個人頁`}
                 >
                   <div className="models-directory-image">
-                    {hasAvatar ? (
-                      <div
-                        className="models-directory-photo"
-                        style={{
-                          backgroundImage: `url("${model.avatar_url}")`,
-                        }}
-                      />
-                    ) : (
-                      <div className="models-directory-fallback">
-                        <span>{getModelInitial(model.name)}</span>
-                      </div>
-                    )}
+                    <ModelPhoto
+                      avatarUrl={model.avatar_url}
+                      fallbackUrl={fallbackImage}
+                      modelName={model.name}
+                    />
                   </div>
 
                   <div className="models-directory-overlay">
@@ -192,9 +232,7 @@ export default function ModelsPage() {
 
                     <h3>{model.name}</h3>
 
-                    <span>
-                      {model.bio?.trim() || "攝影活動 Model"}
-                    </span>
+                    <span>{model.bio?.trim() || "攝影活動 Model"}</span>
 
                     <small>
                       查看個人頁 <b>→</b>
