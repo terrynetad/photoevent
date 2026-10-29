@@ -127,3 +127,18 @@
 - 本機保留少量 gallery 測試 JPEG、SVG 格式檔及超過 5 MB 的圖片；清理前確認不再需要。
 
 清理 staging 資料或帳號前，先以 UUID／slug／Storage object path 核對只涉及上述 QA 資源；不要執行全表刪除或批次清理。
+
+## Production 發布唯讀驗收 — 2026-10-29
+
+Production 程式發布來源為 `terrynetad/photoevent` 的 `main`。發布前 Vercel deployment `Ge1C7ApXBAvceeLVMpQps89avoN1` 指向 `2ca62ed0667ed25428b94c4f35a0d707d91f7557`；Model release commit `fcd697d5cb2ff19ed8e65baa7dca6788ac1408b2` 對應 Vercel Production deployment `C6tCgX6HywtNMwjsxQbDKQZC3X9h`，狀態 Ready，Production alias 為 `https://photoevent-iota.vercel.app`。
+
+| 路徑／操作 | 預期 | 實際結果 | 證據與判定 |
+|---|---|---|---|
+| Vercel deployment 詳情 | Production alias、Git repo／branch／commit 與 release 相符 | Ready；`terrynetad/photoevent`、`main`、release commit；domain 包含正式網址 | Vercel Deployment Overview；通過 |
+| `/` 首頁 | 公開首頁可呈現 | HTTP 200，首頁標題與導覽正常，列出活動與 Model 入口 | Production 瀏覽器頁面；通過 |
+| `/events` 活動列表 | 已發布活動可載入 | HTTP 200，顯示 8 場近期活動與篩選 | Production 瀏覽器頁面；通過 |
+| 已發布活動詳情 | 活動內容與相片可展示 | HTTP 200，標題／資訊／4 張相片呈現；等待 lazy-loading 後 4 張圖片皆載入 | Production 瀏覽器頁面及圖片載入狀態；通過 |
+| `/models` 及一個公開 Model 個人頁 | Model 列表／個人頁呈現，沒有 Model 圖片時顯示佔位 | 兩頁 HTTP 200；列表有 8 個 Model；所查個人頁明確顯示無相片佔位及公開活動區塊 | Production 瀏覽器頁面；通過呈現檢查，未新增正式 Model 測試資料 |
+| `/admin` 未登入入口 | 顯示登入表單，不暴露管理資料 | HTTP 200，顯示 ADMIN ACCESS 登入表單 | Production 瀏覽器頁面；僅驗證入口，不做正式登入／寫入 |
+
+Production 驗收只讀公開頁面及 Vercel deployment metadata；沒有新增／修改／刪除正式資料，沒有正式管理員登入，也沒有正式圖片上傳。Production DB 設定以既有唯讀 metadata 驗證結果為證據；不以本表的頁面檢查取代 RLS／Storage 權限驗收。release worktree 另執行 `npm test` 7/7、`npm run test:ui:mock` 6/6、`npx tsc --noEmit`、`npm run lint`（0 errors／6 warnings）及 `npm run build`，其中 build 使用假 Supabase URL/key。

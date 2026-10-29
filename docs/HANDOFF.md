@@ -9,6 +9,15 @@
 - 活動編輯器最新狀態及活動圖片路徑修正保留於 `app/admin/page.tsx` 與 `app/events/page.tsx`；驗收證據詳見 [docs/qa/RESULTS.md](./qa/RESULTS.md)。
 - `.env.local` 是本機 staging 設定，已由 `.gitignore` 忽略。不可輸出或提交任何 key／密碼；不得使用 production secrets 或 service role key。
 
+## Production 發布 — 2026-10-29
+
+- Production Supabase ref：`cpcbvvrpuekmhbzfevhq`。唯讀核驗確認 Model gallery 欄位與 10 張限制、`model-images` 公開 bucket（5 MB、JPEG／PNG／WebP）、Storage RLS 與 SELECT／admin INSERT policies 符合設計；既有 Model policies 及全域 grants 未變。不要重跑建置或將 staging 資料搬至 production。
+- GitHub release：`main` commit `fcd697d5cb2ff19ed8e65baa7dca6788ac1408b2`，tag `v1.1.0`。V1.0.0 tag 保留。
+- 發布前 Vercel deployment：`Ge1C7ApXBAvceeLVMpQps89avoN1`（`2ca62ed`）。Model release deployment：`C6tCgX6HywtNMwjsxQbDKQZC3X9h`（`fcd697d`，Ready），Production domain `https://photoevent-iota.vercel.app`。
+- Production 頁面唯讀驗收：首頁、活動列表／詳情、Model 列表／個人頁、admin 登入入口均回 HTTP 200 並呈現內容；活動圖片等待 lazy-loading 後載入。未登入 production admin，未新增或修改正式資料。
+- 備份／回復點：repo 外私人目錄內的 Production custom-format logical dump 已通過 archive-list 檢查；未做 restore 測試且不含 Storage 圖片 bytes。本機回復 branch `backup/pre-production-model-profile-20261028-172939` 指向 `957875312a76efcbdcedcf0a03de5ba89cbc5e90`。
+- Staging 測試帳號、Model／活動及公開 bucket 中一張有效測試圖片仍保留，需負責人確認後再人工清理；曾曝光的測試密碼須重設。匿名訪客直接 API 寫入拒絕仍未測。
+
 ## 本次修改與驗證
 
 - 修正活動儲存後編輯器仍讀取舊 `activities` state 的問題：使用資料載入 callback 回傳的最新活動資料刷新目前編輯器。
