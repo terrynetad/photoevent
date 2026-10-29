@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { supabase } from "@/lib/supabase";
 import styles from "./events.module.css";
 
@@ -248,9 +253,6 @@ export default function EventsPage() {
   const [selectedOutfit, setSelectedOutfit] = useState("");
 
   const loadEvents = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError("");
-
     try {
       const { data, error } = await supabase
         .from("activities")
@@ -299,6 +301,7 @@ export default function EventsPage() {
         throw new Error(error.message);
       }
 
+      setLoadError("");
       const activityRows = (data ?? []) as unknown as ActivityRow[];
 
       const mappedEvents = activityRows.map((activity, index): EventView => {
@@ -374,8 +377,16 @@ export default function EventsPage() {
   }, []);
 
   useEffect(() => {
+    // The async event query updates state after its network request resolves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadEvents();
   }, [loadEvents]);
+
+  function reloadEvents() {
+    setIsLoading(true);
+    setLoadError("");
+    void loadEvents();
+  }
 
   const availableModels = useMemo(
     () =>
@@ -743,7 +754,7 @@ export default function EventsPage() {
             <h3>活動資料暫時未能載入</h3>
             <p>{loadError}</p>
 
-            <button type="button" onClick={() => void loadEvents()}>
+            <button type="button" onClick={reloadEvents}>
               重新載入資料
             </button>
           </section>

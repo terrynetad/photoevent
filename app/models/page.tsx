@@ -3,13 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-
-const DEFAULT_MODEL_IMAGES = [
-  "/images/models/image1.jpeg",
-  "/images/models/image2.jpeg",
-  "/images/models/image3.jpeg",
-  "/images/models/image4.jpeg",
-];
+import { loadTaggedModelPhotos, selectModelPhotos, type TaggedPhoto } from "@/lib/model-photos";
+import ModelPhoto from "./model-photo";
+import "./models.css";
 
 type ModelRow = {
   id: string;
@@ -17,7 +13,6 @@ type ModelRow = {
   slug: string;
   bio: string | null;
   avatar_url: string | null;
-  instagram_url: string | null;
   is_active: boolean;
   sort_order: number;
 };
@@ -32,61 +27,9 @@ function getEnglishName(name: string) {
   return name.slice(0, 2).toUpperCase();
 }
 
-function getDefaultModelImage(index: number) {
-  return DEFAULT_MODEL_IMAGES[index % DEFAULT_MODEL_IMAGES.length];
-}
-
-function normalizeImageUrl(value: string | null | undefined) {
-  const imageUrl = value?.trim();
-
-  if (!imageUrl) {
-    return "";
-  }
-
-  if (imageUrl.startsWith("public/")) {
-    return `/${imageUrl.replace(/^public\//, "")}`;
-  }
-
-  if (imageUrl.startsWith("./public/")) {
-    return `/${imageUrl.replace(/^\.\/public\//, "")}`;
-  }
-
-  return imageUrl;
-}
-
-function ModelPhoto({
-  avatarUrl,
-  fallbackUrl,
-  modelName,
-}: {
-  avatarUrl: string | null;
-  fallbackUrl: string;
-  modelName: string;
-}) {
-  const normalizedAvatarUrl = normalizeImageUrl(avatarUrl);
-  const [imageSrc, setImageSrc] = useState(
-    normalizedAvatarUrl || fallbackUrl
-  );
-
-  useEffect(() => {
-    setImageSrc(normalizedAvatarUrl || fallbackUrl);
-  }, [normalizedAvatarUrl, fallbackUrl]);
-
-  return (
-    <img
-      className="models-directory-photo"
-      src={imageSrc}
-      alt={`${modelName} 的 Model 相片`}
-      onError={() => {
-        if (imageSrc !== fallbackUrl) {
-          setImageSrc(fallbackUrl);
-        }
-      }}
-    />
-  );
-}
-
 export default function ModelsPage() {
+  const [taggedPhotos, setTaggedPhotos] = useState<TaggedPhoto[]>([]);
+  const [photoWarning, setPhotoWarning] = useState("");
   const [models, setModels] = useState<ModelRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -107,7 +50,6 @@ export default function ModelsPage() {
             slug,
             bio,
             avatar_url,
-            instagram_url,
             is_active,
             sort_order
           `
@@ -129,6 +71,13 @@ export default function ModelsPage() {
         return;
       }
 
+      const rows = (data ?? []) as ModelRow[];
+      try {
+        const photos = await loadTaggedModelPhotos(rows.map(row => row.id));
+        if (isMounted) setTaggedPhotos(photos);
+      } catch {
+        if (isMounted) setPhotoWarning("活動相片暫時無法載入；已設定的主要相片仍會顯示。");
+      }
       if (isMounted) {
         setModels((data ?? []) as ModelRow[]);
         setIsLoading(false);
@@ -189,6 +138,7 @@ export default function ModelsPage() {
           ) : null}
         </div>
 
+        {photoWarning ? <p role="status">{photoWarning}</p> : null}
         {loadError ? (
           <div className="data-state">
             <strong>Model 資料暫時未能載入</strong>
@@ -206,8 +156,8 @@ export default function ModelsPage() {
           </div>
         ) : (
           <div className="models-directory-grid">
-            {models.map((model, index) => {
-              const fallbackImage = getDefaultModelImage(index);
+            {models.filter(model => model.slug?.trim()).map((model, index) => {
+              const photos = selectModelPhotos(model.avatar_url, [], taggedPhotos.filter(photo => photo.modelId === model.id));
 
               return (
                 <Link
@@ -218,9 +168,10 @@ export default function ModelsPage() {
                 >
                   <div className="models-directory-image">
                     <ModelPhoto
-                      avatarUrl={model.avatar_url}
-                      fallbackUrl={fallbackImage}
-                      modelName={model.name}
+                      src={photos.main}
+                      alternatives={photos.activityPhotos}
+                      name={model.name}
+                      className="models-directory-photo"
                     />
                   </div>
 
@@ -232,7 +183,6 @@ export default function ModelsPage() {
 
                     <h3>{model.name}</h3>
 
-                    <span>{model.bio?.trim() || "攝影活動 Model"}</span>
 
                     <small>
                       查看個人頁 <b>→</b>

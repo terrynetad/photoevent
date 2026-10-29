@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  ChangeEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { supabase } from "@/lib/supabase";
 import styles from "./admin.module.css";
 
@@ -369,20 +376,6 @@ export default function AdminPage() {
   const [creatingLookup, setCreatingLookup] = useState("");
 
   useEffect(() => {
-    void checkAdminAccess();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      void checkAdminAccess();
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
     return () => {
       if (coverPreviewUrl.startsWith("blob:")) {
         URL.revokeObjectURL(coverPreviewUrl);
@@ -396,42 +389,7 @@ export default function AdminPage() {
     };
   }, [coverPreviewUrl, galleryPreviewUrls]);
 
-  async function checkAdminAccess() {
-    setIsCheckingAuth(true);
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      setIsAdmin(false);
-      setAdminEmail("");
-      setIsCheckingAuth(false);
-      return;
-    }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("email, role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profileError || profile?.role !== "admin") {
-      setIsAdmin(false);
-      setAdminEmail(user.email || "");
-      setIsCheckingAuth(false);
-      return;
-    }
-
-    setAdminEmail(profile.email || user.email || "");
-    setIsAdmin(true);
-    setIsCheckingAuth(false);
-
-    await loadAdminData();
-  }
-
-  async function loadAdminData() {
+  const loadAdminData = useCallback(async (): Promise<ActivityRow[] | null> => {
     setIsLoadingData(true);
     setDataMessage("");
 
@@ -534,15 +492,69 @@ export default function AdminPage() {
       console.error("Admin load failed:", errors);
       setDataMessage("無法載入後台資料，請檢查 Supabase RLS 或瀏覽器 Console。");
       setIsLoadingData(false);
-      return;
+      return null;
     }
 
-    setActivities((activitiesResult.data || []) as unknown as ActivityRow[]);
+    const loadedActivities = (activitiesResult.data || []) as unknown as ActivityRow[];
+
+    setActivities(loadedActivities);
     setModels((modelsResult.data || []) as BasicOption[]);
     setThemes((themesResult.data || []) as BasicOption[]);
     setOutfits((outfitsResult.data || []) as BasicOption[]);
     setIsLoadingData(false);
-  }
+
+    return loadedActivities;
+  }, []);
+
+  const checkAdminAccess = useCallback(async () => {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      setIsAdmin(false);
+      setAdminEmail("");
+      setIsCheckingAuth(false);
+      return;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("email, role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError || profile?.role !== "admin") {
+      setIsAdmin(false);
+      setAdminEmail(user.email || "");
+      setIsCheckingAuth(false);
+      return;
+    }
+
+    setAdminEmail(profile.email || user.email || "");
+    setIsAdmin(true);
+    setIsCheckingAuth(false);
+
+    await loadAdminData();
+  }, [loadAdminData]);
+
+  useEffect(() => {
+    // The async auth lookup updates state after its network requests resolve.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void checkAdminAccess();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      setIsCheckingAuth(true);
+      void checkAdminAccess();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [checkAdminAccess]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -805,7 +817,7 @@ export default function AdminPage() {
   }> {
     const extension = getFileExtension(file);
     const originalName = escapeFileName(file.name.replace(/\.[^/.]+$/, ""));
-    const fileName = `${Date.now()}-${createUniqueId()}-${originalName}.${extension}`;
+    const fileName = `${createUniqueId()}-${originalName}.${extension}`;
     const storagePath = `${activityId}/${folder}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
@@ -889,7 +901,7 @@ export default function AdminPage() {
     }
 
     const extension = getStorageFileExtension(sourceStoragePath);
-    const destinationPath = `${newActivityId}/${folder}/${Date.now()}-${index}-${createUniqueId()}.${extension}`;
+    const destinationPath = `${newActivityId}/${folder}/${index}-${createUniqueId()}.${extension}`;
 
     const { error: copyError } = await supabase.storage
       .from(STORAGE_BUCKET)
@@ -1240,11 +1252,13 @@ export default function AdminPage() {
         }
       }
 
-      await loadAdminData();
+      const loadedActivities = await loadAdminData();
 
       resetTemporaryUploads();
 
-      const updatedActivity = activities.find((activity) => activity.id === activityId);
+      const updatedActivity = loadedActivities?.find(
+        (activity) => activity.id === activityId
+      );
 
       setForm((current) => ({
         ...current,
@@ -1336,7 +1350,7 @@ export default function AdminPage() {
       .replace(/^-+|-+$/g, "")
       .replace(/-{2,}/g, "-");
 
-    const duplicateSlug = `${sourceSlug || "activity"}-copy-${Date.now()}`;
+    const duplicateSlug = `${sourceSlug || "activity"}-copy-${createUniqueId()}`;
 
     const sourceImages = [...(activity.activity_images || [])].sort(
       (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
@@ -1866,6 +1880,7 @@ export default function AdminPage() {
         </Link>
 
         <div className={styles.topbarRight}>
+          <Link href="/admin/models" className={styles.publicSiteLink}>Model 管理</Link>
           <span className={styles.adminIdentity}>
             ADMIN <strong>{adminEmail}</strong>
           </span>

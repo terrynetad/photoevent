@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { loadTaggedModelPhotos, selectModelPhotos } from "@/lib/model-photos";
+import ModelPhoto from "../model-photo";
+import "../models.css";
 
 const HONG_KONG_TIME_ZONE = "Asia/Hong_Kong";
 
@@ -13,7 +16,7 @@ type ModelRow = {
   slug: string;
   bio: string | null;
   avatar_url: string | null;
-  instagram_url: string | null;
+  gallery_urls: string[];
   is_active: boolean;
   sort_order: number;
 };
@@ -60,22 +63,6 @@ function ensureArray<T>(value: T | T[] | null | undefined): T[] {
   }
 
   return Array.isArray(value) ? value : [value];
-}
-
-function getModelInitial(name: string) {
-  const trimmedName = name.trim();
-
-  if (!trimmedName) {
-    return "M";
-  }
-
-  const englishOnly = trimmedName.replace(/[^\u0000-\u007f]/g, "").trim();
-
-  if (englishOnly) {
-    return englishOnly.slice(0, 1).toUpperCase();
-  }
-
-  return trimmedName.slice(0, 1).toUpperCase();
 }
 
 function getEnglishName(name: string) {
@@ -153,24 +140,12 @@ function formatPrice(
   return `${currencyCode} ${formattedAmount}`;
 }
 
-function getInstagramUrl(value: string | null) {
-  const trimmedValue = value?.trim();
-
-  if (!trimmedValue) {
-    return "";
-  }
-
-  if (/^https?:\/\//i.test(trimmedValue)) {
-    return trimmedValue;
-  }
-
-  return `https://instagram.com/${trimmedValue.replace(/^@/, "")}`;
-}
-
 function ModelProfileContent() {
   const params = useParams<{ slug: string }>();
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
 
+  const [photos, setPhotos] = useState<ReturnType<typeof selectModelPhotos>>({ main: "", gallery: [], activityPhotos: [] });
+  const [photoWarning, setPhotoWarning] = useState("");
   const [model, setModel] = useState<ModelRow | null>(null);
   const [activities, setActivities] = useState<ActivityView[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -203,7 +178,7 @@ function ModelProfileContent() {
             slug,
             bio,
             avatar_url,
-            instagram_url,
+            gallery_urls,
             is_active,
             sort_order
           `
@@ -233,6 +208,12 @@ function ModelProfileContent() {
       }
 
       const currentModel = modelData as ModelRow;
+      try {
+        const tagged = await loadTaggedModelPhotos([currentModel.id]);
+        if (isMounted) { setPhotos(selectModelPhotos(currentModel.avatar_url, currentModel.gallery_urls, tagged)); setPhotoWarning(""); }
+      } catch {
+        if (isMounted) { setPhotos(selectModelPhotos(currentModel.avatar_url, currentModel.gallery_urls, [])); setPhotoWarning("已標記活動相片暫時未能載入。"); }
+      }
 
       const { data: relationData, error: relationError } = await supabase
         .from("activity_models")
@@ -324,11 +305,6 @@ function ModelProfileContent() {
     };
   }, [slug]);
 
-  const instagramUrl = useMemo(
-    () => getInstagramUrl(model?.instagram_url ?? null),
-    [model?.instagram_url]
-  );
-
   if (isLoading) {
     return (
       <main className="detail-page">
@@ -357,6 +333,8 @@ function ModelProfileContent() {
       </main>
     );
   }
+
+  if (loadError && !model) return <main className="detail-page"><section className="detail-state-page"><h1>暫時未能載入 Model</h1><p role="alert">{loadError}</p><Link href="/models">返回 Model 列表</Link></section></main>;
 
   if (notFound || !model) {
     return (
@@ -394,7 +372,6 @@ function ModelProfileContent() {
     );
   }
 
-  const hasAvatar = Boolean(model.avatar_url?.trim());
 
   return (
     <main className="model-profile-page">
@@ -414,18 +391,7 @@ function ModelProfileContent() {
       </nav>
 
       <section className="model-profile-hero">
-        {hasAvatar ? (
-          <div
-            className="model-profile-hero-image"
-            style={{
-              backgroundImage: `url("${model.avatar_url}")`,
-            }}
-          />
-        ) : (
-          <div className="model-profile-hero-fallback">
-            <span>{getModelInitial(model.name)}</span>
-          </div>
-        )}
+        <ModelPhoto key={model.id} src={photos.main} alternatives={photos.activityPhotos} name={model.name} className="model-profile-hero-image" />
 
         <div className="model-profile-hero-overlay" />
 
@@ -436,27 +402,14 @@ function ModelProfileContent() {
 
           <h1>{model.name}</h1>
 
-          <p>
-            {model.bio?.trim() || "PhotoEvent 攝影活動合作 Model。"}
-          </p>
-
-          <div className="model-profile-hero-actions">
-            <a className="detail-primary-button" href="#activities">
-              查看公開活動 <span>↓</span>
-            </a>
-
-            {instagramUrl ? (
-              <a
-                className="detail-text-button"
-                href={instagramUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Instagram <span>↗</span>
-              </a>
-            ) : null}
-          </div>
+          <a className="detail-primary-button" href="#portfolio">查看相片 ↓</a>
         </div>
+      </section>
+
+      <section className="section model-profile-content" id="portfolio">
+        <div className="section-heading"><h2>{model.name} 的相片</h2><span>{photos.gallery.length} 張</span></div>
+        {photoWarning ? <p role="status">{photoWarning}</p> : null}
+        {photos.gallery.length ? <div className="model-portfolio-grid">{photos.gallery.map(url => <ModelPhoto key={url} src={url} name={model.name} className="model-portfolio-photo" />)}</div> : <p>暫未有其他相片。</p>}
       </section>
 
       <section className="section model-profile-content" id="activities">

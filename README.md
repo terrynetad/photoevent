@@ -34,3 +34,7 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Model 個人檔案（開發分支）
+
+簡化 Model 管理位於 `/admin/models`。請先閱讀 [上線及還原文件](docs/MODEL_PROFILE_ROLLOUT.md) 及 [本地驗收結果](docs/qa/RESULTS.md)。此修改包含尚未執行的 Supabase migration，不能在沒有資料庫備份／權限審核的情況下直接推送正式環境。

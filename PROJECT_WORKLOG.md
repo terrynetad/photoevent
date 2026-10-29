@@ -45,3 +45,13 @@ PhotoEvent
 │
 └─ Vercel
    └─ 連接 GitHub main branch 後自動部署
+## 2026-10-27：簡化 Model 個人檔案（本地實作，未部署）
+
+- 使用者確認：只需名字、主要相片、其他相片（建議 5–10 張，上限 10 張），不顯示 IG／Bio。
+- 主要相片或整個相簿留空時，使用已標記該 Model 的 published 活動圖片；不使用未標記封面或草稿圖片。
+- 已新增 `/admin/models`、統一前台選圖、相片管理、加法式 migration；保留舊資料、相片檔及舊版分支。
+- 此決定更新上方歷史「等待確認 Model 管理」規劃；V1.0.0 正式版本及 tag 不變。
+- 開發分支：`feature/model-profile`；備份：`backup/model-profile-before-20261027`（基準 `2ca62ed`）。
+- 驗證：7 項單元測試、TypeScript、build、新增程式 lint、本地 mock UI 流程通過。完整 app 的既有 lint 問題仍未修正。
+- 未做：正式 Supabase migration、真實 RLS／Storage 驗收、推送／部署。
+- 上線及還原步驟：`docs/MODEL_PROFILE_ROLLOUT.md`；QA：`docs/qa/RESULTS.md`。

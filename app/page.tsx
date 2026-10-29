@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import ModelPhoto from "./models/model-photo";
 import { getModelImage } from "@/lib/model-image";
+import { loadTaggedModelPhotos, selectModelPhotos } from "@/lib/model-photos";
 
 const HONG_KONG_TIME_ZONE = "Asia/Hong_Kong";
 
@@ -426,19 +428,24 @@ export default function Home() {
         const displayEvents =
           futureEvents.length > 0 ? futureEvents : mappedEvents;
 
+        const taggedPhotos = await loadTaggedModelPhotos(modelRows.map(model => model.id)).catch(error => {
+          console.error(error);
+          return [];
+        });
         const mappedModels = modelRows
           .filter((model) => Boolean(model.slug?.trim()))
           .map((model): ModelView => {
             const modelKey = model.slug?.trim() || model.id;
-            const fallbackImage = getModelImage(null, modelKey);
+            const photos = selectModelPhotos(model.avatar_url, [], taggedPhotos.filter(photo => photo.modelId === model.id));
+            const fallbackImage = photos.activityPhotos[0] || getModelImage(null, modelKey);
 
             return {
               id: model.id,
               name: model.name,
               slug: model.slug?.trim() || "",
               englishName: getEnglishName(model.name),
-              style: model.bio?.trim() || "攝影活動 Model",
-              image: getModelImage(model.avatar_url, modelKey),
+              style: "攝影活動 Model",
+              image: photos.main || getModelImage(null, modelKey),
               fallbackImage,
             };
           });
@@ -959,15 +966,11 @@ export default function Home() {
                 key={model.id}
                 aria-label={`查看 ${model.name} 的個人頁`}
               >
-                <img
+                <ModelPhoto
                   className="model-image"
                   src={model.image}
-                  alt={`${model.name} Model 相片`}
-                  onError={(event) => {
-                    if (event.currentTarget.src !== model.fallbackImage) {
-                      event.currentTarget.src = model.fallbackImage;
-                    }
-                  }}
+                  alternatives={[model.fallbackImage, "/images/models/placeholder.svg"]}
+                  name={model.name}
                 />
 
                 <div className="model-overlay">

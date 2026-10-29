@@ -1,0 +1,103 @@
+.model-profile-hero {
+  position: relative;
+  min-height: 540px;
+  background: #29211b;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+.model-profile-hero-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+}
+.model-profile-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 40%, #17130fcc);
+  pointer-events: none;
+}
+.model-profile-hero-content {
+  position: relative;
+  padding: 36px;
+  color: white;
+}
+.model-profile-hero-content h1 {
+  font-size: clamp(36px, 6vw, 64px);
+}
+.model-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 20px;
+}
+.model-portfolio-photo {
+  width: 100%;
+  aspect-ratio: 4/5;
+  object-fit: contain;
+  background: #e8e1d8;
+}
+.models-directory-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.model-profile-content {
+  padding-block: 48px;
+}
+.models-page .detail-nav,
+.model-profile-page .detail-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 22px max(24px, calc((100vw - 1180px) / 2));
+  gap: 24px;
+  background: #fffdf8;
+}
+.models-hero {
+  background: #29211b;
+  color: white;
+  padding: 64px max(24px, calc((100vw - 1180px) / 2));
+}
+.models-hero h1 {
+  font-size: clamp(32px, 5vw, 58px);
+  line-height: 1.25;
+}
+.models-hero p {
+  max-width: 620px;
+  line-height: 1.8;
+}
+.models-directory-section {
+  padding-block: 48px;
+}
+.models-directory-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 24px;
+}
+.models-directory-card {
+  display: block;
+  background: #fffdf8;
+  border: 1px solid #ded6cc;
+}
+.models-directory-image {
+  aspect-ratio: 4/5;
+}
+.models-directory-overlay {
+  padding: 18px;
+}
+.models-directory-overlay h3 {
+  font-size: 26px;
+  margin-block: 10px;
+}
+.models-directory-overlay p {
+  font-size: 12px;
+}
+.models-cta {
+  padding: 64px 24px;
+  text-align: center;
+  background: #29211b;
+  color: white;
+}
